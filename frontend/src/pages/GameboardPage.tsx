@@ -36,8 +36,36 @@ export function GameboardPage() {
     setGang(await gamesApi.getMyGang(nextGame.id));
     const nextBoard = await gamesApi.getGame(nextGame.id);
     setBoard(nextBoard);
-    setActionStatus(await gamesApi.getActionStatus(nextGame.id));
+    setActionStatus(nextBoard.game.status === "active" ? await gamesApi.getActionStatus(nextGame.id) : null);
   }
+
+  useEffect(() => {
+    if (!game?.id) return;
+    let cancelled = false;
+
+    const refreshSelectedGame = async () => {
+      try {
+        const nextBoard = await gamesApi.getGame(game.id);
+        if (cancelled) return;
+        setBoard(nextBoard);
+        setGame(nextBoard.game);
+        setGang(await gamesApi.getMyGang(game.id));
+        setActionStatus(
+          nextBoard.game.status === "active"
+            ? await gamesApi.getActionStatus(game.id)
+            : null,
+        );
+      } catch (reason) {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : "Could not refresh game");
+      }
+    };
+
+    const intervalId = window.setInterval(() => void refreshSelectedGame(), 2000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [game?.id]);
 
   async function handleCreateGame() {
     setError(null);
@@ -161,7 +189,7 @@ export function GameboardPage() {
 
       {game && (
         <section>
-          <h2>Lobby</h2>
+          <h2>{game.status === "lobby" ? "Lobby" : "Game"}</h2>
           <p>{game.memberCount}/{game.maxPlayers} players joined</p>
           <p>Status: {game.status}</p>
           {!gang && game.status === "lobby" && (

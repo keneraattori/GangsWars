@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as gamesApi from "../api/games";
-import type { GameSummary, GangSummary } from "../api/games";
+import type { ActionStatus, GameSummary, GangSummary, PhaseOneAction } from "../api/games";
 import { useAuth } from "../state/auth-context";
 
 export function GameboardPage() {
@@ -8,9 +8,12 @@ export function GameboardPage() {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [game, setGame] = useState<GameSummary | null>(null);
   const [board, setBoard] = useState<gamesApi.Gameboard | null>(null);
+  const [actionStatus, setActionStatus] = useState<ActionStatus | null>(null);
   const [gang, setGang] = useState<GangSummary | null>(null);
   const [maxPlayers, setMaxPlayers] = useState(2);
   const [gangName, setGangName] = useState("");
+  const [selectedAction, setSelectedAction] = useState<PhaseOneAction>("buzinezz");
+  const [targetGangId, setTargetGangId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function refreshOpenGames() {
@@ -29,7 +32,9 @@ export function GameboardPage() {
     setError(null);
     setGame(nextGame);
     setGang(await gamesApi.getMyGang(nextGame.id));
-    setBoard(await gamesApi.getGame(nextGame.id));
+    const nextBoard = await gamesApi.getGame(nextGame.id);
+    setBoard(nextBoard);
+    setActionStatus(await gamesApi.getActionStatus(nextGame.id));
   }
 
   async function handleCreateGame() {
@@ -75,8 +80,24 @@ export function GameboardPage() {
       const started = await gamesApi.startGame(game.id);
       setGame(started);
       setBoard(await gamesApi.getGame(game.id));
+      setActionStatus(await gamesApi.getActionStatus(game.id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not start game");
+    }
+  }
+
+  async function handleSubmitAction() {
+    if (!game) return;
+    setError(null);
+    try {
+      const result = await gamesApi.submitPhaseOneAction(
+        game.id,
+        selectedAction,
+        selectedAction === "beef" || selectedAction === "attack" ? targetGangId : undefined,
+      );
+      setActionStatus(result.status);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not submit action");
     }
   }
 
@@ -144,9 +165,40 @@ export function GameboardPage() {
               {board.turfs.map((turf) => (
                 <p key={turf.id}>{turf.label} | {turf.ownerGangName ?? "Neutral"}</p>
               ))}
+              {actionStatus && (
+                <section>
+                  <h3>Phase 1 action</h3>
+                  <p>{actionStatus.submittedCount}/{actionStatus.totalGangCount} gangs submitted</p>
+                  {actionStatus.hasSubmitted ? <p>Your action is submitted.</p> : (
+                    <form onSubmit={(event) => { event.preventDefault(); void handleSubmitAction(); }}>
+                      <label>
+                        Action
+                        <select value={selectedAction} onChange={(event) => setSelectedAction(event.target.value as PhaseOneAction)}>
+                          <option value="beef">Beef</option>
+                          <option value="buzinezz">Buzinezz</option>
+                          <option value="show_off">Show off!</option>
+                          <option value="attack">Attack</option>
+                        </select>
+                      </label>
+                      {(selectedAction === "beef" || selectedAction === "attack") && (
+                        <label>
+                          Target gang
+                          <select value={targetGangId} onChange={(event) => setTargetGangId(event.target.value)} required>
+                            <option value="">Select a gang</option>
+                            {board.gangs.filter((boardGang) => boardGang.id !== gang?.id).map((target) => (
+                              <option key={target.id} value={target.id}>{target.name}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <button type="submit">Submit Phase 1 action</button>
+                    </form>
+                  )}
+                </section>
+              )}
             </section>
           )}
-          <button type="button" onClick={() => { setGame(null); setGang(null); setBoard(null); void refreshOpenGames(); }}>Back to games</button>
+          <button type="button" onClick={() => { setGame(null); setGang(null); setBoard(null); setActionStatus(null); void refreshOpenGames(); }}>Back to games</button>
         </section>
       )}
     </main>

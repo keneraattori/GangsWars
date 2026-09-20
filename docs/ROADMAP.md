@@ -22,10 +22,10 @@ Built in small, independently-shippable milestones. Each milestone should be its
 - `GET /api/games/:id` + Gameboard page showing round number, phase, gangs + stats, neutral Turf count, and every named Turf with its owner.
 - No actions yet — proves the board rendering pipeline.
 
-## M4 — Phase 1 actions (submission only)
-- `phase_actions` table + submit endpoint.
+## M4 — Phase 1 actions (submission only) ✅
+- `phase_actions` table + authenticated submit/status endpoints.
 - Frontend action picker for Beef / Buzinezz / Show off! / Attack (target selection UI for Beef/Attack).
-- "X/Y gangs submitted" indicator.
+- "X/Y gangs submitted" indicator without revealing other players' choices.
 
 ## M5 — Phase 1 resolution
 - Pure `resolvePhase1()` service function + unit tests (seeded RNG).

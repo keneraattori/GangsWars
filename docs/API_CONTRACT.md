@@ -74,11 +74,10 @@ Body:
 ```json
 { "action": "beef", "targetGangId": "..." }
 ```
-or `{ "action": "expand", "targetTurfId": "..." }` — works the same whether the target turf is neutral or owned by another gang (turfs are individually named/identified per [DATA_MODEL.md](DATA_MODEL.md) and [TURF_NAMES.md](TURF_NAMES.md); the server looks up the turf's current owner to decide which capture formula applies).
-202 → `{ "accepted": true }`. 409 if the caller already submitted this phase, or the action isn't valid for the current phase.
+For M4 Phase 1, `action` is one of `beef`, `buzinezz`, `show_off`, or `attack`. Beef and Attack require a `targetGangId` belonging to another gang in the same game. 202 → `{ "accepted": true, "status": { "submittedCount": 1, "totalGangCount": 2, "hasSubmitted": true } }`. 409 if the caller already submitted this phase, or the action isn't valid for the current phase.
 
 ### `GET /api/games/:gameId/actions/status`
-Returns which gangs have submitted for the current phase (booleans only, not the choices) so the frontend can show "3/5 gangs ready".
+Returns current round/phase and which gangs have submitted for the current phase (counts and the caller's own boolean only, never the choices) so the frontend can show "1/2 gangs ready".
 
 ## Notes for implementers
 

@@ -37,6 +37,16 @@ export interface Gameboard {
   neutralTurfs: number;
 }
 
+export type PhaseOneAction = "beef" | "buzinezz" | "show_off" | "attack";
+
+export interface ActionStatus {
+  roundNumber: number;
+  phase: "phase1" | "phase2";
+  submittedCount: number;
+  totalGangCount: number;
+  hasSubmitted: boolean;
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -82,5 +92,20 @@ export function createGang(gameId: string, name: string): Promise<GangSummary> {
   return request(`/api/games/${gameId}/gangs`, {
     method: "POST",
     body: JSON.stringify({ name }),
+  });
+}
+
+export function getActionStatus(gameId: string): Promise<ActionStatus> {
+  return request(`/api/games/${gameId}/actions/status`);
+}
+
+export function submitPhaseOneAction(
+  gameId: string,
+  action: PhaseOneAction,
+  targetGangId?: string,
+): Promise<{ accepted: true; status: ActionStatus }> {
+  return request(`/api/games/${gameId}/actions`, {
+    method: "POST",
+    body: JSON.stringify({ action, ...(targetGangId ? { targetGangId } : {}) }),
   });
 }

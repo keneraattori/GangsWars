@@ -12,6 +12,12 @@ import {
 } from '../../db/games.js';
 import { createGang, findGangForUser } from '../../db/gangs.js';
 import { getGameboard } from '../../db/gameboard.js';
+import {
+  ActionError,
+  getActionStatus,
+  PHASE_ONE_ACTIONS,
+  submitPhaseOneAction,
+} from '../../db/phaseActions.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { pickTurfNames } from '../../services/turfNames.js';
 
@@ -89,6 +95,45 @@ router.post('/:gameId/start', async (req, res, next) => {
   }
 });
 
+const phaseOneActionSchema = z.object({
+  action: z.enum(PHASE_ONE_ACTIONS),
+  targetGangId: z.string().uuid().optional(),
+});
+
+router.post('/:gameId/actions', async (req, res, next) => {
+  const parsed = phaseOneActionSchema.safeParse(req.body);
+  if (!parsed.success || !req.userId) {
+    res.status(400).json({ error: 'Invalid Phase 1 action' });
+    return;
+  }
+  try {
+    const status = await submitPhaseOneAction(pool, {
+      gameId: req.params.gameId,
+      userId: req.userId,
+      ...parsed.data,
+    });
+    res.status(202).json({ accepted: true, status });
+  } catch (error) {
+    handleActionError(error, res, next);
+  }
+});
+
+router.get('/:gameId/actions/status', async (req, res, next) => {
+  if (!req.userId) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+  try {
+    if (!(await isGameMember(pool, req.params.gameId, req.userId))) {
+      res.status(403).json({ error: 'Join the game to view action status' });
+      return;
+    }
+    res.json(await getActionStatus(pool, req.params.gameId, req.userId));
+  } catch (error) {
+    handleActionError(error, res, next);
+  }
+});
+
 const gangNameSchema = z.object({
   name: z.string().trim().min(3).max(30),
 });
@@ -147,6 +192,14 @@ function isUniqueViolation(error: unknown): boolean {
 
 function handleGameError(error: unknown, res: import('express').Response, next: import('express').NextFunction) {
   if (error instanceof GameError) {
+    res.status(error.statusCode).json({ error: error.message });
+    return;
+  }
+  next(error);
+}
+
+function handleActionError(error: unknown, res: import('express').Response, next: import('express').NextFunction) {
+  if (error instanceof ActionError) {
     res.status(error.statusCode).json({ error: error.message });
     return;
   }

@@ -59,7 +59,7 @@ One gang per user per game.
 | owner_gang_id | uuid FK → gangs.id, nullable | null = neutral |
 
 ## `phase_actions`
-One row per gang per phase per round — the player's submitted choice.
+One row per gang per phase per round — the player's submitted choice. M4 writes Phase 1 rows; Phase 2 rows use the same table later.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |

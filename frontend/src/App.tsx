@@ -8,7 +8,7 @@ function App() {
   return (
     <>
       <header className="site-banner">
-        <img src="/banner.png" alt="Turf Wars" />
+        <img src="/banner.jpg" alt="Turf Wars" />
       </header>
       <Routes>
         <Route path="/login" element={<LoginPage />} />

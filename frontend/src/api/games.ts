@@ -18,6 +18,25 @@ export interface GangSummary {
   turfsHeld: number;
 }
 
+export interface TurfSummary {
+  id: string;
+  label: string;
+  ownerGangId: string | null;
+  ownerGangName: string | null;
+}
+
+export interface Gameboard {
+  game: GameSummary & {
+    roundNumber: number;
+    currentPhase: "phase1" | "phase2";
+    phaseDeadline: string | null;
+    winnerGangId: string | null;
+  };
+  gangs: GangSummary[];
+  turfs: TurfSummary[];
+  neutralTurfs: number;
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -40,7 +59,7 @@ export function createGame(maxPlayers: number): Promise<GameSummary> {
   });
 }
 
-export function getGame(gameId: string): Promise<GameSummary> {
+export function getGame(gameId: string): Promise<Gameboard> {
   return request(`/api/games/${gameId}`);
 }
 

@@ -11,6 +11,7 @@ import {
   startGame,
 } from '../../db/games.js';
 import { createGang, findGangForUser } from '../../db/gangs.js';
+import { getGameboard } from '../../db/gameboard.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { pickTurfNames } from '../../services/turfNames.js';
 
@@ -64,12 +65,12 @@ router.get('/:gameId', async (req, res, next) => {
       res.status(403).json({ error: 'Join the game to view it' });
       return;
     }
-    const game = await getGameSummary(pool, req.params.gameId);
-    if (!game) {
+    const board = await getGameboard(pool, req.params.gameId);
+    if (!board) {
       res.status(404).json({ error: 'Game not found' });
       return;
     }
-    res.json(game);
+    res.json(board);
   } catch (error) {
     next(error);
   }

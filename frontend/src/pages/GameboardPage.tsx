@@ -7,6 +7,7 @@ export function GameboardPage() {
   const { user, logout } = useAuth();
   const [games, setGames] = useState<GameSummary[]>([]);
   const [game, setGame] = useState<GameSummary | null>(null);
+  const [board, setBoard] = useState<gamesApi.Gameboard | null>(null);
   const [gang, setGang] = useState<GangSummary | null>(null);
   const [maxPlayers, setMaxPlayers] = useState(2);
   const [gangName, setGangName] = useState("");
@@ -28,6 +29,7 @@ export function GameboardPage() {
     setError(null);
     setGame(nextGame);
     setGang(await gamesApi.getMyGang(nextGame.id));
+    setBoard(await gamesApi.getGame(nextGame.id));
   }
 
   async function handleCreateGame() {
@@ -58,7 +60,9 @@ export function GameboardPage() {
     try {
       setGang(await gamesApi.createGang(game.id, gangName));
       setGangName("");
-      setGame(await gamesApi.getGame(game.id));
+      const updatedBoard = await gamesApi.getGame(game.id);
+      setGame(updatedBoard.game);
+      setBoard(updatedBoard);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create gang");
     }
@@ -68,7 +72,9 @@ export function GameboardPage() {
     if (!game) return;
     setError(null);
     try {
-      setGame(await gamesApi.startGame(game.id));
+      const started = await gamesApi.startGame(game.id);
+      setGame(started);
+      setBoard(await gamesApi.getGame(game.id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not start game");
     }
@@ -123,8 +129,24 @@ export function GameboardPage() {
           {game.status === "lobby" && game.creatorUserId === user?.id && (
             <button type="button" onClick={() => void handleStartGame()}>Start game</button>
           )}
-          {game.status === "active" && <p>The game has started. The full action board arrives in M3.</p>}
-          <button type="button" onClick={() => { setGame(null); setGang(null); void refreshOpenGames(); }}>Back to games</button>
+          {board?.game.status === "active" && (
+            <section>
+              <h2>Round {board.game.roundNumber}</h2>
+              <p>Phase: {board.game.currentPhase}</p>
+              <p>Neutral Turfs: {board.neutralTurfs}</p>
+              <h3>Gangs</h3>
+              {board.gangs.map((boardGang) => (
+                <p key={boardGang.id}>
+                  {boardGang.name} | ${boardGang.money} | {boardGang.members} members | Notoriety {boardGang.notoriety} | {boardGang.turfsHeld} Turfs
+                </p>
+              ))}
+              <h3>Turfs</h3>
+              {board.turfs.map((turf) => (
+                <p key={turf.id}>{turf.label} | {turf.ownerGangName ?? "Neutral"}</p>
+              ))}
+            </section>
+          )}
+          <button type="button" onClick={() => { setGame(null); setGang(null); setBoard(null); void refreshOpenGames(); }}>Back to games</button>
         </section>
       )}
     </main>

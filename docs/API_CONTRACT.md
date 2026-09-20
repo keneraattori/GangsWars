@@ -49,18 +49,17 @@ Auth required and membership required. Returns the current lobby/game summary. F
 ## Games / Gameboard
 
 ### `GET /api/games/:gameId` (M3 response)
-The M3 version will extend the summary with full board state:
+Auth and game membership required. Returns:
 ```json
 {
-  "id": "...",
-  "status": "active",
-  "roundNumber": 2,
-  "currentPhase": "phase1",
+  "game": { "id": "...", "status": "active", "roundNumber": 1, "currentPhase": "phase1", "memberCount": 2, "gangCount": 2 },
   "gangs": [
     { "id": "...", "name": "...", "money": 12000, "members": 22, "notoriety": 0, "turfsHeld": 3 }
   ],
-  "neutralTurfs": 14,
-  "winnerGangId": null
+  "turfs": [
+    { "id": "...", "label": "Blackwater Docks", "ownerGangId": null, "ownerGangName": null }
+  ],
+  "neutralTurfs": 20
 }
 ```
 

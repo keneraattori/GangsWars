@@ -18,8 +18,8 @@ Built in small, independently-shippable milestones. Each milestone should be its
 - On game start, create 20 `turfs` rows with unique random names from [TURF_NAMES.md](TURF_NAMES.md).
 - Gang creation form (name input) → shows starting stats (10,000 / 20 / 0).
 
-## M3 — Read-only Gameboard
-- `GET /api/games/:id` + Gameboard page showing round number, gangs + stats, neutral turf count.
+## M3 — Read-only Gameboard ✅
+- `GET /api/games/:id` + Gameboard page showing round number, phase, gangs + stats, neutral Turf count, and every named Turf with its owner.
 - No actions yet — proves the board rendering pipeline.
 
 ## M4 — Phase 1 actions (submission only)

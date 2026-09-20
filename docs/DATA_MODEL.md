@@ -82,4 +82,4 @@ One row per resolved action — what the Gameboard displays.
 - **Simultaneous Expand conflicts**: when multiple `phase_actions` in the same `(game_id, round_number, phase)` target the same `target_turf_id`, resolve via the roll-off described in [GAME_DESIGN.md](GAME_DESIGN.md) instead of independently.
 
 ## Migration strategy
-Plain SQL migration files under `backend/src/db/migrations/`, run in order, tracked via a lightweight migration table (see `node-pg-migrate` or similar in `LOCAL_DEV.md`). Decision on exact tool deferred to the milestone that first needs a migration.
+TypeScript migration files under `backend/src/db/migrations/`, managed with `node-pg-migrate` (tracked via its `pgmigrations` table). Run with `npm run migrate:up` / `migrate:down` / `migrate:create` in `backend/` (see [LOCAL_DEV.md](LOCAL_DEV.md)). `users` table added at M1; `games`/`gangs`/`turfs`/`phase_actions`/`action_results` land at their respective milestones.

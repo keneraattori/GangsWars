@@ -22,7 +22,14 @@ npm install
 docker compose up -d
 ```
 
-Spins up a `postgres` container using `docker-compose.yml` at the repo root (db `gangwars`, user/password `postgres`/`postgres`, port 5432). Not yet wired into the backend — added when M1 (auth) needs a real database connection.
+Spins up a `postgres` container using `docker-compose.yml` at the repo root (db `gangwars`, user/password `postgres`/`postgres`, host port **5433** → container port 5432 — 5432 is remapped because something else on this machine intercepts host port 5432; adjust back to `5432:5432` if that's not an issue on your machine).
+
+Apply migrations (from `backend/`):
+```powershell
+npm run migrate:up --workspace backend
+```
+(`migrate:down` reverts the last migration, `migrate:create -- <name>` scaffolds a new one.)
+
 
 ## Backend
 
@@ -48,7 +55,7 @@ Two terminals for now: `npm run dev:backend` and `npm run dev:frontend`. A combi
 
 `backend/.env` (copy from `backend/.env.example`, never commit the real file — it's git-ignored):
 ```
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/gangwars
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/gangwars
 JWT_SECRET=dev-only-secret-change-me
 PORT=3000
 ```

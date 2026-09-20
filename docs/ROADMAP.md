@@ -2,12 +2,12 @@
 
 Built in small, independently-shippable milestones. Each milestone should be its own branch/PR (or a short series of small PRs) — see [CONTRIBUTING.md](CONTRIBUTING.md) for batch-size guidance. Don't start a milestone until the prior one is merged and working.
 
-## M0 — Repo & tooling scaffold
+## M0 — Repo & tooling scaffold ✅
 - Initialize `frontend/` (React + Vite) and `backend/` (Express + TS or JS, project's choice) with linting/formatting configured.
 - `docker-compose.yml` for local Postgres.
 - Empty health-check endpoint (`GET /api/health`) proven working end-to-end locally.
 
-## M1 — Auth
+## M1 — Auth ✅
 - `users` table + migration.
 - Register / login / logout endpoints, JWT cookie auth.
 - Minimal React Login/Register pages wired to the API.

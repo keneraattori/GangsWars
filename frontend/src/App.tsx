@@ -6,18 +6,23 @@ import { RegisterPage } from "./pages/RegisterPage";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route
-        path="/"
-        element={
-          <RequireAuth>
-            <GameboardPage />
-          </RequireAuth>
-        }
-      />
-    </Routes>
+    <>
+      <header className="site-banner">
+        <img src="/banner.png" alt="Turf Wars" />
+      </header>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <GameboardPage />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </>
   );
 }
 

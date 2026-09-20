@@ -17,6 +17,21 @@
   }
 }
 
+.site-banner {
+  width: 100%;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background: #17120f;
+}
+
+.site-banner img {
+  display: block;
+  width: 100%;
+  height: clamp(150px, 28vw, 315px);
+  object-fit: cover;
+  object-position: center;
+}
+
 .hero {
   position: relative;
 

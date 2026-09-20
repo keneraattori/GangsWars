@@ -2,6 +2,8 @@ import type { Pool } from 'pg';
 
 export const PHASE_ONE_ACTIONS = ['beef', 'buzinezz', 'show_off', 'attack'] as const;
 export type PhaseOneAction = (typeof PHASE_ONE_ACTIONS)[number];
+export const PHASE_TWO_ACTIONS = ['earn', 'expand', 'recruit', 'protect'] as const;
+export type PhaseTwoAction = (typeof PHASE_TWO_ACTIONS)[number];
 
 export interface ActionStatus {
   roundNumber: number;

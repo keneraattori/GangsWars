@@ -19,6 +19,8 @@ import {
   submitPhaseOneAction,
 } from '../../db/phaseActions.js';
 import { resolvePhaseOneForGame } from '../../db/phaseResolution.js';
+import { submitPhaseTwoAction } from '../../db/phaseTwoActions.js';
+import { resolvePhaseTwoForGame } from '../../db/phaseTwoResolution.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { pickTurfNames } from '../../services/turfNames.js';
 
@@ -100,22 +102,40 @@ const phaseOneActionSchema = z.object({
   action: z.enum(PHASE_ONE_ACTIONS),
   targetGangId: z.string().uuid().optional(),
 });
+const phaseTwoActionSchema = z.object({
+  action: z.enum(['earn', 'expand', 'recruit', 'protect']),
+  targetTurfId: z.string().uuid().optional(),
+});
 
 router.post('/:gameId/actions', async (req, res, next) => {
-  const parsed = phaseOneActionSchema.safeParse(req.body);
-  if (!parsed.success || !req.userId) {
+  if (!req.userId) {
     res.status(400).json({ error: 'Invalid Phase 1 action' });
     return;
   }
   try {
-    let status = await submitPhaseOneAction(pool, {
-      gameId: req.params.gameId,
-      userId: req.userId,
-      ...parsed.data,
-    });
+    const phaseTwoParsed = phaseTwoActionSchema.safeParse(req.body);
+    const phaseOneParsed = phaseOneActionSchema.safeParse(req.body);
+    let status;
+    if (phaseTwoParsed.success) {
+      status = await submitPhaseTwoAction(pool, {
+        gameId: req.params.gameId,
+        userId: req.userId,
+        ...phaseTwoParsed.data,
+      });
+    } else if (phaseOneParsed.success) {
+      status = await submitPhaseOneAction(pool, {
+        gameId: req.params.gameId,
+        userId: req.userId,
+        ...phaseOneParsed.data,
+      });
+    } else {
+      res.status(400).json({ error: 'Invalid phase action' });
+      return;
+    }
     let resolved = false;
     if (status.submittedCount === status.totalGangCount && status.totalGangCount > 0) {
-      await resolvePhaseOneForGame(pool, req.params.gameId);
+      if (status.phase === 'phase1') await resolvePhaseOneForGame(pool, req.params.gameId);
+      else await resolvePhaseTwoForGame(pool, req.params.gameId);
       status = await getActionStatus(pool, req.params.gameId, req.userId);
       resolved = true;
     }

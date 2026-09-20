@@ -32,10 +32,10 @@ Built in small, independently-shippable milestones. Each milestone should be its
 - Attack damage applied to members; Beef/Buzinezz/Show off! bonuses stored in resolved action outcomes for Phase 2 use.
 - Action log written and rendered on the Gameboard; final submission advances the game to Phase 2.
 
-## M6 — Phase 2 actions + resolution
+## M6 — Phase 2 actions + resolution ✅
 - Earn / Expand / Recruit / Protect submission.
-- `resolvePhase2()`: money/member/turf math, simultaneous Expand roll-offs, win-condition check (12 turfs).
-- Turf ownership updates reflected on Gameboard; round increments; new Phase 1 begins.
+- `resolvePhase2()`: money/member/Turf math, simultaneous Expand roll-offs, and win-condition check (12 Turfs).
+- Turf ownership updates reflected on Gameboard; action log records results; round increments and the next Phase 1 begins unless a winner is recorded.
 
 ## M7 — Phase timeout + full round loop polish
 - Enforce the 10-minute phase timeout (`games.phase_deadline`); auto-resolve a phase for gangs that haven't submitted (per [GAME_DESIGN.md §1](GAME_DESIGN.md#1-core-loop)).

@@ -50,6 +50,7 @@ export interface Gameboard {
 }
 
 export type PhaseOneAction = "beef" | "buzinezz" | "show_off" | "attack";
+export type PhaseTwoAction = "earn" | "expand" | "recruit" | "protect";
 
 export interface ActionStatus {
   roundNumber: number;
@@ -119,5 +120,16 @@ export function submitPhaseOneAction(
   return request(`/api/games/${gameId}/actions`, {
     method: "POST",
     body: JSON.stringify({ action, ...(targetGangId ? { targetGangId } : {}) }),
+  });
+}
+
+export function submitPhaseTwoAction(
+  gameId: string,
+  action: PhaseTwoAction,
+  targetTurfId?: string,
+): Promise<{ accepted: true; resolved: boolean; status: ActionStatus }> {
+  return request(`/api/games/${gameId}/actions`, {
+    method: "POST",
+    body: JSON.stringify({ action, ...(targetTurfId ? { targetTurfId } : {}) }),
   });
 }

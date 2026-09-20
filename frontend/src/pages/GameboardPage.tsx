@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as gamesApi from "../api/games";
-import type { ActionStatus, GameSummary, GangSummary, PhaseOneAction } from "../api/games";
+import type { ActionStatus, GameSummary, GangSummary, PhaseOneAction, PhaseTwoAction } from "../api/games";
 import { useAuth } from "../state/auth-context";
 
 export function GameboardPage() {
@@ -14,6 +14,8 @@ export function GameboardPage() {
   const [gangName, setGangName] = useState("");
   const [selectedAction, setSelectedAction] = useState<PhaseOneAction>("buzinezz");
   const [targetGangId, setTargetGangId] = useState("");
+  const [selectedPhaseTwoAction, setSelectedPhaseTwoAction] = useState<PhaseTwoAction>("earn");
+  const [targetTurfId, setTargetTurfId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function refreshOpenGames() {
@@ -106,6 +108,26 @@ export function GameboardPage() {
     }
   }
 
+  async function handleSubmitPhaseTwoAction() {
+    if (!game) return;
+    setError(null);
+    try {
+      const result = await gamesApi.submitPhaseTwoAction(
+        game.id,
+        selectedPhaseTwoAction,
+        selectedPhaseTwoAction === "expand" ? targetTurfId : undefined,
+      );
+      setActionStatus(result.status);
+      if (result.resolved) {
+        const updatedBoard = await gamesApi.getGame(game.id);
+        setGame(updatedBoard.game);
+        setBoard(updatedBoard);
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not submit Phase 2 action");
+    }
+  }
+
   return (
     <main>
       <h1>Gameboard</h1>
@@ -155,11 +177,12 @@ export function GameboardPage() {
           {game.status === "lobby" && game.creatorUserId === user?.id && (
             <button type="button" onClick={() => void handleStartGame()}>Start game</button>
           )}
-          {board?.game.status === "active" && (
+          {board && (board.game.status === "active" || board.game.status === "finished") && (
             <section>
               <h2>Round {board.game.roundNumber}</h2>
               <p>Phase: {board.game.currentPhase}</p>
               <p>Neutral Turfs: {board.neutralTurfs}</p>
+              {board.game.status === "finished" && <p>Game finished. Winner: {board.gangs.find((boardGang) => boardGang.id === board.game.winnerGangId)?.name ?? "Unknown"}</p>}
               <h3>Gangs</h3>
               {board.gangs.map((boardGang) => (
                 <p key={boardGang.id}>
@@ -170,7 +193,7 @@ export function GameboardPage() {
               {board.turfs.map((turf) => (
                 <p key={turf.id}>{turf.label} | {turf.ownerGangName ?? "Neutral"}</p>
               ))}
-              {actionStatus && board.game.currentPhase === "phase1" && (
+              {board.game.status === "active" && actionStatus && board.game.currentPhase === "phase1" && (
                 <section>
                   <h3>Phase 1 action</h3>
                   <p>{actionStatus.submittedCount}/{actionStatus.totalGangCount} gangs submitted</p>
@@ -201,7 +224,38 @@ export function GameboardPage() {
                   )}
                 </section>
               )}
-              {board.game.currentPhase === "phase2" && <p>Phase 1 has resolved. Phase 2 is ready for action selection.</p>}
+              {board.game.status === "active" && board.game.currentPhase === "phase2" && <p>Phase 1 has resolved. Phase 2 is ready for action selection.</p>}
+              {actionStatus && board.game.currentPhase === "phase2" && (
+                <section>
+                  <h3>Phase 2 action</h3>
+                  <p>{actionStatus.submittedCount}/{actionStatus.totalGangCount} gangs submitted</p>
+                  {actionStatus.hasSubmitted ? <p>Your action is submitted.</p> : (
+                    <form onSubmit={(event) => { event.preventDefault(); void handleSubmitPhaseTwoAction(); }}>
+                      <label>
+                        Action
+                        <select value={selectedPhaseTwoAction} onChange={(event) => setSelectedPhaseTwoAction(event.target.value as PhaseTwoAction)}>
+                          <option value="earn">Earn</option>
+                          <option value="expand">Expand</option>
+                          <option value="recruit">Recruit</option>
+                          <option value="protect">Protect</option>
+                        </select>
+                      </label>
+                      {selectedPhaseTwoAction === "expand" && (
+                        <label>
+                          Target Turf
+                          <select value={targetTurfId} onChange={(event) => setTargetTurfId(event.target.value)} required>
+                            <option value="">Select a Turf</option>
+                            {board.turfs.filter((turf) => turf.ownerGangId !== gang?.id).map((turf) => (
+                              <option key={turf.id} value={turf.id}>{turf.label} ({turf.ownerGangName ?? "Neutral"})</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <button type="submit">Submit Phase 2 action</button>
+                    </form>
+                  )}
+                </section>
+              )}
               {board.actionLog.length > 0 && (
                 <section>
                   <h3>Action log</h3>

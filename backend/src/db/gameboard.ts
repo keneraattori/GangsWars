@@ -9,6 +9,17 @@ export interface TurfSummary {
   ownerGangName: string | null;
 }
 
+export interface ActionLogEntry {
+  id: string;
+  roundNumber: number;
+  phase: 'phase1' | 'phase2';
+  gangName: string;
+  action: string;
+  rollResult: Record<string, unknown>;
+  outcome: Record<string, unknown>;
+  resolvedAt: string;
+}
+
 export interface Gameboard {
   game: GameSummary & {
     roundNumber: number;
@@ -19,6 +30,7 @@ export interface Gameboard {
   gangs: GangSummary[];
   turfs: TurfSummary[];
   neutralTurfs: number;
+  actionLog: ActionLogEntry[];
 }
 
 interface GameBoardRow {
@@ -50,6 +62,17 @@ interface TurfRow {
   label: string;
   owner_gang_id: string | null;
   owner_gang_name: string | null;
+}
+
+interface ActionLogRow {
+  id: string;
+  round_number: number;
+  phase: 'phase1' | 'phase2';
+  gang_name: string;
+  action: string;
+  roll_result: Record<string, unknown>;
+  outcome: Record<string, unknown>;
+  resolved_at: Date;
 }
 
 export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboard | null> {
@@ -87,6 +110,17 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     [gameId],
   );
 
+  const actionLogResult = await pool.query<ActionLogRow>(
+    `SELECT ar.id, pa.round_number, pa.phase, ga.name AS gang_name, pa.action,
+      ar.roll_result, ar.outcome, ar.resolved_at
+     FROM action_results ar
+     JOIN phase_actions pa ON pa.id = ar.phase_action_id
+     JOIN gangs ga ON ga.id = pa.gang_id
+     WHERE pa.game_id = $1
+     ORDER BY ar.resolved_at DESC, ar.id DESC`,
+    [gameId],
+  );
+
   const game = gameResult.rows[0];
   const gangs = gangsResult.rows.map((gang) => ({
     id: gang.id,
@@ -103,6 +137,16 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     label: turf.label,
     ownerGangId: turf.owner_gang_id,
     ownerGangName: turf.owner_gang_name,
+  }));
+  const actionLog = actionLogResult.rows.map((entry) => ({
+    id: entry.id,
+    roundNumber: entry.round_number,
+    phase: entry.phase,
+    gangName: entry.gang_name,
+    action: entry.action,
+    rollResult: entry.roll_result,
+    outcome: entry.outcome,
+    resolvedAt: entry.resolved_at.toISOString(),
   }));
 
   return {
@@ -121,5 +165,6 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     gangs,
     turfs,
     neutralTurfs: turfs.filter((turf) => turf.ownerGangId === null).length,
+    actionLog,
   };
 }

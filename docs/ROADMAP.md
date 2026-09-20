@@ -27,10 +27,10 @@ Built in small, independently-shippable milestones. Each milestone should be its
 - Frontend action picker for Beef / Buzinezz / Show off! / Attack (target selection UI for Beef/Attack).
 - "X/Y gangs submitted" indicator without revealing other players' choices.
 
-## M5 — Phase 1 resolution
-- Pure `resolvePhase1()` service function + unit tests (seeded RNG).
-- Attack damage applied to members; Beef/Buzinezz/Show off! bonuses stored for Phase 2 use.
-- Action log written and rendered on the Gameboard.
+## M5 — Phase 1 resolution ✅
+- Pure `resolvePhase1()` service function + deterministic injected-RNG unit tests.
+- Attack damage applied to members; Beef/Buzinezz/Show off! bonuses stored in resolved action outcomes for Phase 2 use.
+- Action log written and rendered on the Gameboard; final submission advances the game to Phase 2.
 
 ## M6 — Phase 2 actions + resolution
 - Earn / Expand / Recruit / Protect submission.

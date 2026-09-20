@@ -25,6 +25,17 @@ export interface TurfSummary {
   ownerGangName: string | null;
 }
 
+export interface ActionLogEntry {
+  id: string;
+  roundNumber: number;
+  phase: "phase1" | "phase2";
+  gangName: string;
+  action: string;
+  rollResult: Record<string, unknown>;
+  outcome: Record<string, unknown>;
+  resolvedAt: string;
+}
+
 export interface Gameboard {
   game: GameSummary & {
     roundNumber: number;
@@ -35,6 +46,7 @@ export interface Gameboard {
   gangs: GangSummary[];
   turfs: TurfSummary[];
   neutralTurfs: number;
+  actionLog: ActionLogEntry[];
 }
 
 export type PhaseOneAction = "beef" | "buzinezz" | "show_off" | "attack";
@@ -103,7 +115,7 @@ export function submitPhaseOneAction(
   gameId: string,
   action: PhaseOneAction,
   targetGangId?: string,
-): Promise<{ accepted: true; status: ActionStatus }> {
+): Promise<{ accepted: true; resolved: boolean; status: ActionStatus }> {
   return request(`/api/games/${gameId}/actions`, {
     method: "POST",
     body: JSON.stringify({ action, ...(targetGangId ? { targetGangId } : {}) }),

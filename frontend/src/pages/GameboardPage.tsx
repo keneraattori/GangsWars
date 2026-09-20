@@ -96,6 +96,11 @@ export function GameboardPage() {
         selectedAction === "beef" || selectedAction === "attack" ? targetGangId : undefined,
       );
       setActionStatus(result.status);
+      if (result.resolved) {
+        const updatedBoard = await gamesApi.getGame(game.id);
+        setGame(updatedBoard.game);
+        setBoard(updatedBoard);
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not submit action");
     }
@@ -165,7 +170,7 @@ export function GameboardPage() {
               {board.turfs.map((turf) => (
                 <p key={turf.id}>{turf.label} | {turf.ownerGangName ?? "Neutral"}</p>
               ))}
-              {actionStatus && (
+              {actionStatus && board.game.currentPhase === "phase1" && (
                 <section>
                   <h3>Phase 1 action</h3>
                   <p>{actionStatus.submittedCount}/{actionStatus.totalGangCount} gangs submitted</p>
@@ -194,6 +199,19 @@ export function GameboardPage() {
                       <button type="submit">Submit Phase 1 action</button>
                     </form>
                   )}
+                </section>
+              )}
+              {board.game.currentPhase === "phase2" && <p>Phase 1 has resolved. Phase 2 is ready for action selection.</p>}
+              {board.actionLog.length > 0 && (
+                <section>
+                  <h3>Action log</h3>
+                  {board.actionLog.map((entry) => (
+                    <p key={entry.id}>
+                      Round {entry.roundNumber} {entry.phase}: {entry.gangName} chose {entry.action}
+                      {Object.keys(entry.rollResult).length > 0 && ` | Roll: ${JSON.stringify(entry.rollResult)}`}
+                      {` | ${JSON.stringify(entry.outcome)}`}
+                    </p>
+                  ))}
                 </section>
               )}
             </section>

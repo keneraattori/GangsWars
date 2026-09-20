@@ -74,7 +74,7 @@ One row per gang per phase per round — the player's submitted choice. M4 write
 | unique (game_id, round_number, phase, gang_id) | | one action per gang per phase |
 
 ## `action_results` (Action Log)
-One row per resolved action — what the Gameboard displays.
+One row per resolved action — what the Gameboard displays. M5 writes these rows when the final Phase 1 action arrives.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |

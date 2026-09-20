@@ -61,7 +61,7 @@ Note on Attack + Protect interaction: Attack has no hit/miss check (it always la
 
 ### Roll notation
 
-All "random X–Y" ranges described as 2–12 are 2d6 (two six-sided dice summed); 1–6 ranges are 1d6; "1–5" damage is a 1d5 (exact die/re-roll mechanic is an implementation detail, still open — see [§7 Still open](#still-open-minor-non-blocking)). Exact RNG implementation is an engineering detail (see [ARCHITECTURE.md](ARCHITECTURE.md)), but the *probability distribution* described here must be preserved so implementers should use the dice notation, not `Math.random()*11+2` flat distributions.
+All "random X–Y" ranges described as 2–12 are 2d6 (two six-sided dice summed); 1–6 ranges are 1d6; Attack's "1–5" damage is currently a uniform integer from 1 through 5. Exact RNG implementation is an engineering detail (see [ARCHITECTURE.md](ARCHITECTURE.md)), but the *probability distribution* described here must be preserved so implementers should use the dice notation, not `Math.random()*11+2` flat distributions.
 
 ## 5. Gameboard (front page)
 
@@ -95,7 +95,6 @@ Formerly "Open Questions" — kept as a decisions log so the reasoning isn't los
 
 ### Still open (minor, non-blocking)
 - Exact UX for a gang that misses the 10-minute timeout (just skipped silently, or shown as "forfeited" in the Action Log?) — can be decided at the milestone that implements phase timeouts.
-- Exact die mechanic for Attack's 1–5 damage (1d5, or 1d6 with re-roll on 6?) — pick whichever is easier to implement when writing `resolvePhase1`.
 
 
 ## 8. Worked Example (for shared understanding)

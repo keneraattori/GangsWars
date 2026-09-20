@@ -74,7 +74,7 @@ Body:
 ```json
 { "action": "beef", "targetGangId": "..." }
 ```
-For M4 Phase 1, `action` is one of `beef`, `buzinezz`, `show_off`, or `attack`. Beef and Attack require a `targetGangId` belonging to another gang in the same game. 202 → `{ "accepted": true, "status": { "submittedCount": 1, "totalGangCount": 2, "hasSubmitted": true } }`. 409 if the caller already submitted this phase, or the action isn't valid for the current phase.
+For M4 Phase 1, `action` is one of `beef`, `buzinezz`, `show_off`, or `attack`. Beef and Attack require a `targetGangId` belonging to another gang in the same game. 202 → `{ "accepted": true, "resolved": false, "status": { "submittedCount": 1, "totalGangCount": 2, "hasSubmitted": true } }`. The final submission returns `resolved: true` and advances the game to Phase 2. 409 if the caller already submitted this phase, or the action isn't valid for the current phase.
 
 ### `GET /api/games/:gameId/actions/status`
 Returns current round/phase and which gangs have submitted for the current phase (counts and the caller's own boolean only, never the choices) so the frontend can show "1/2 gangs ready".

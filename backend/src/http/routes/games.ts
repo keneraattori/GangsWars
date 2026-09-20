@@ -18,6 +18,7 @@ import {
   PHASE_ONE_ACTIONS,
   submitPhaseOneAction,
 } from '../../db/phaseActions.js';
+import { resolvePhaseOneForGame } from '../../db/phaseResolution.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { pickTurfNames } from '../../services/turfNames.js';
 
@@ -107,12 +108,18 @@ router.post('/:gameId/actions', async (req, res, next) => {
     return;
   }
   try {
-    const status = await submitPhaseOneAction(pool, {
+    let status = await submitPhaseOneAction(pool, {
       gameId: req.params.gameId,
       userId: req.userId,
       ...parsed.data,
     });
-    res.status(202).json({ accepted: true, status });
+    let resolved = false;
+    if (status.submittedCount === status.totalGangCount && status.totalGangCount > 0) {
+      await resolvePhaseOneForGame(pool, req.params.gameId);
+      status = await getActionStatus(pool, req.params.gameId, req.userId);
+      resolved = true;
+    }
+    res.status(202).json({ accepted: true, resolved, status });
   } catch (error) {
     handleActionError(error, res, next);
   }

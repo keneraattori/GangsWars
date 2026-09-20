@@ -12,9 +12,9 @@ Built in small, independently-shippable milestones. Each milestone should be its
 - Register / login / logout endpoints, JWT cookie auth.
 - Minimal React Login/Register pages wired to the API.
 
-## M2 — Game & Gang creation
-- `games`, `gangs`, `turfs` tables.
-- Endpoint to create/join a game with a chosen lobby size (2–8 players, per [GAME_DESIGN.md](GAME_DESIGN.md)); game starts once full or the creator starts it manually (decide when implementing).
+## M2 — Game & Gang creation ✅
+- `games`, `game_members`, `gangs`, and `turfs` tables.
+- Authenticated endpoints to create/join/start a game with a chosen lobby size (2–8 players, per [GAME_DESIGN.md](GAME_DESIGN.md)).
 - On game start, create 20 `turfs` rows with unique random names from [TURF_NAMES.md](TURF_NAMES.md).
 - Gang creation form (name input) → shows starting stats (10,000 / 20 / 0).
 

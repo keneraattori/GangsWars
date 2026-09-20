@@ -16,6 +16,7 @@ A single match/lobby.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
+| creator_user_id | uuid FK → users.id | creator can start the game |
 | status | enum: `lobby`, `active`, `finished` | |
 | max_players | int | 2–8, set at game creation |
 | round_number | int, default 1 | |
@@ -23,6 +24,16 @@ A single match/lobby.
 | phase_deadline | timestamptz, nullable | set when the current phase opens; phase auto-resolves 10 minutes after opening even if not all gangs submitted |
 | winner_gang_id | uuid FK → gangs.id, nullable | set when a gang reaches 12 turfs |
 | created_at | timestamptz | |
+| started_at | timestamptz, nullable | set when the creator starts the game |
+
+## `game_members`
+Join records are separate from gangs so a user can join a lobby before naming their gang.
+| Column | Type | Notes |
+|---|---|---|
+| game_id | uuid FK → games.id | |
+| user_id | uuid FK → users.id | |
+| joined_at | timestamptz | |
+| primary key (game_id, user_id) | | one membership per user per game |
 
 ## `gangs`
 One gang per user per game.

@@ -25,13 +25,31 @@ Body: `{ "name": string }`
 201 → `{ "id": string, "name": string, "money": 10000, "members": 20, "notoriety": 0 }`
 409 if the user already has a gang in this game.
 
-### `GET /api/games/:gameId/gangs/me`
-Auth required. Returns the caller's gang in this game (404 if none yet → frontend routes to gang-creation).
+### `GET /api/games/:gameId/me`
+Auth required. Returns the caller's gang in this game (404 if none yet → frontend shows gang creation).
+
+## Games / Lobby
+
+### `GET /api/games/open`
+Auth required. Returns open lobby summaries with `id`, `maxPlayers`, `memberCount`, `gangCount`, and `status`.
+
+### `POST /api/games`
+Auth required. Creates a lobby and automatically joins the creator.
+Body: `{ "maxPlayers": 2 }` where `maxPlayers` is an integer from 2 through 8.
+
+### `POST /api/games/:gameId/join`
+Auth required. Joins an open lobby. Returns 409 if the lobby is full or already started.
+
+### `POST /api/games/:gameId/start`
+Auth required. Creator-only. Requires at least two joined players, creates 20 unique named neutral Turfs, and activates the game.
+
+### `GET /api/games/:gameId`
+Auth required and membership required. Returns the current lobby/game summary. Full board data lands in M3.
 
 ## Games / Gameboard
 
-### `GET /api/games/:gameId`
-Public within the game's players. Returns full board state:
+### `GET /api/games/:gameId` (M3 response)
+The M3 version will extend the summary with full board state:
 ```json
 {
   "id": "...",

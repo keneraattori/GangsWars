@@ -1,12 +1,20 @@
 # Local Development
 
-> This file will be filled in with exact commands as M0 (repo scaffold) is implemented. Placeholder plan below.
+# Local Development
 
 ## Prerequisites
 
-- Node.js LTS
-- Docker Desktop (for local PostgreSQL)
+- Node.js 20+ (developed against v24)
+- Docker Desktop (for local PostgreSQL) — install separately if not already present
 - Azure Static Web Apps CLI (`swa-cli`) — only needed once we start emulating the Azure Functions API locally, around M9
+
+## Install
+
+From the repo root (npm workspaces manage `frontend/`, `backend/`, `shared/` together):
+
+```powershell
+npm install
+```
 
 ## Local Postgres
 
@@ -14,48 +22,42 @@
 docker compose up -d
 ```
 
-Spins up a `postgres` container using `docker-compose.yml` at the repo root. Connection string goes in `backend/.env` (never committed — see `.env.example`).
+Spins up a `postgres` container using `docker-compose.yml` at the repo root (db `gangwars`, user/password `postgres`/`postgres`, port 5432). Not yet wired into the backend — added when M1 (auth) needs a real database connection.
 
 ## Backend
 
 ```powershell
-cd backend
-npm install
-npm run dev   # starts Express server with hot reload, e.g. via nodemon/tsx
+npm run dev:backend
 ```
 
-Runs the API at `http://localhost:3000` (or configured port).
+Starts the Express server (via `tsx watch`) at `http://localhost:3000`. Health check: `GET http://localhost:3000/api/health` → `{ "status": "ok" }`.
 
 ## Frontend
 
 ```powershell
-cd frontend
-npm install
-npm run dev   # Vite dev server
+npm run dev:frontend
 ```
 
-Runs the React app at `http://localhost:5173`, proxying `/api` calls to the backend dev server (configure in `vite.config.*`).
+Starts the Vite dev server at `http://localhost:5173`. Requests to `/api/*` are proxied to `http://localhost:3000` (see `frontend/vite.config.ts`), so run the backend alongside it.
 
 ## Running both together
 
-Until we add a root-level dev script (`concurrently` or npm workspaces), run backend and frontend in two terminals.
+Two terminals for now: `npm run dev:backend` and `npm run dev:frontend`. A combined script (`concurrently`) can be added later if it becomes annoying.
 
 ## Environment variables
 
-`backend/.env` (see `backend/.env.example` once created):
+`backend/.env` (copy from `backend/.env.example`, never commit the real file — it's git-ignored):
 ```
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/gangwars
 JWT_SECRET=dev-only-secret-change-me
 PORT=3000
 ```
 
-Never commit real secrets. `.env` is git-ignored.
-
-## Tests
+## Lint & test
 
 ```powershell
-cd backend
-npm test
+npm run lint          # lints backend + frontend
+npm run test:backend  # runs backend vitest suite
 ```
 
-Unit tests for `services/` (game rules, phase resolution) should not require Docker/DB — they operate on plain in-memory game state.
+Backend unit tests (`backend/test/`) don't require Docker/Postgres to be running — they operate on the Express app in-process (see `backend/test/health.test.ts`).

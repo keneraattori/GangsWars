@@ -21,7 +21,7 @@ interface TurfRow {
 interface PhaseTwoActionRow {
   id: string;
   gang_id: string;
-  action: 'earn' | 'expand' | 'recruit' | 'protect';
+  action: 'earn' | 'expand' | 'recruit' | 'protect' | 'skip';
   target_turf_id: string | null;
 }
 

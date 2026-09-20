@@ -39,6 +39,8 @@ npm run dev:backend
 
 Starts the Express server (via `tsx watch`) at `http://localhost:3000`. Health check: `GET http://localhost:3000/api/health` → `{ "status": "ok" }`.
 
+The backend checks expired phase deadlines every 15 seconds. Missing player actions become server-generated `skip` entries and resolve automatically.
+
 ## Frontend
 
 ```powershell

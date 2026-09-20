@@ -37,10 +37,10 @@ Built in small, independently-shippable milestones. Each milestone should be its
 - `resolvePhase2()`: money/member/Turf math, simultaneous Expand roll-offs, and win-condition check (12 Turfs).
 - Turf ownership updates reflected on Gameboard; action log records results; round increments and the next Phase 1 begins unless a winner is recorded.
 
-## M7 — Phase timeout + full round loop polish
-- Enforce the 10-minute phase timeout (`games.phase_deadline`); auto-resolve a phase for gangs that haven't submitted (per [GAME_DESIGN.md §1](GAME_DESIGN.md#1-core-loop)).
-- Handle remaining minor items noted in [GAME_DESIGN.md §7](GAME_DESIGN.md#7-resolved-design-decisions) ("Still open").
-- Basic notifications/UI polish for whose turn/phase it is.
+## M7 — Phase timeout + full round loop polish ✅
+- Enforce the 10-minute phase timeout (`games.phase_deadline`) with a 15-second backend worker; missing gangs receive server-generated `skip` actions and the phase resolves.
+- Timeout skips are recorded in the Action Log and have no gameplay effects.
+- Gameboard shows the current phase, submitted count, phase results, and finished-game winner state.
 
 ## M8 — CI
 - GitHub Actions workflow: install, lint, unit test on every PR for both `frontend/` and `backend/`.

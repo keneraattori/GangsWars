@@ -1,4 +1,4 @@
-import type { PhaseOneAction } from '../db/phaseActions.js';
+import type { ResolvedPhaseOneAction } from '../db/phaseActions.js';
 
 export interface PhaseOneGang {
   id: string;
@@ -8,14 +8,14 @@ export interface PhaseOneGang {
 export interface PhaseOneActionInput {
   id: string;
   gangId: string;
-  action: PhaseOneAction;
+  action: ResolvedPhaseOneAction;
   targetGangId: string | null;
 }
 
 export interface PhaseOneActionResult {
   phaseActionId: string;
   rollResult: Record<string, number>;
-  outcome: Record<string, string | number>;
+  outcome: Record<string, unknown>;
 }
 
 export interface PhaseOneResolution {
@@ -36,7 +36,7 @@ export function resolvePhase1(
 
   for (const action of actions) {
     if (!gangIds.has(action.gangId)) throw new Error(`Unknown acting gang: ${action.gangId}`);
-    const outcome: Record<string, string | number> = {};
+    const outcome: Record<string, unknown> = {};
     const rollResult: Record<string, number> = {};
 
     if (action.action === 'beef') {
@@ -55,6 +55,9 @@ export function resolvePhase1(
       memberDeltas[action.targetGangId] = (memberDeltas[action.targetGangId] ?? 0) - damage;
       outcome.targetGangId = action.targetGangId;
       outcome.membersLost = damage;
+    } else if (action.action === 'skip') {
+      outcome.skipped = true;
+      outcome.reason = 'phase_timeout';
     }
 
     actionResults.push({ phaseActionId: action.id, rollResult, outcome });

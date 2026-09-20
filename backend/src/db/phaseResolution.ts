@@ -16,7 +16,7 @@ interface GangRow {
 interface ActionRow {
   id: string;
   gang_id: string;
-  action: 'beef' | 'buzinezz' | 'show_off' | 'attack';
+  action: 'beef' | 'buzinezz' | 'show_off' | 'attack' | 'skip';
   target_gang_id: string | null;
 }
 

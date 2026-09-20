@@ -67,7 +67,7 @@ One row per gang per phase per round — the player's submitted choice. M4 write
 | round_number | int | |
 | phase | enum: `phase1`, `phase2` | |
 | gang_id | uuid FK → gangs.id | |
-| action | enum: `beef`,`buzinezz`,`show_off`,`attack`,`earn`,`expand`,`recruit`,`protect` | |
+| action | enum: `beef`,`buzinezz`,`show_off`,`attack`,`earn`,`expand`,`recruit`,`protect`,`skip` | `skip` is server-generated only when a phase deadline expires |
 | target_gang_id | uuid FK → gangs.id, nullable | used by beef/attack/expand |
 | target_turf_id | uuid FK → turfs.id, nullable | used by expand |
 | submitted_at | timestamptz | |

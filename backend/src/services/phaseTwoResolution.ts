@@ -1,4 +1,4 @@
-import type { PhaseTwoAction } from '../db/phaseActions.js';
+import type { ResolvedPhaseTwoAction } from '../db/phaseActions.js';
 
 export interface PhaseTwoGang {
   id: string;
@@ -13,7 +13,7 @@ export interface PhaseTwoTurf {
 export interface PhaseTwoActionInput {
   id: string;
   gangId: string;
-  action: PhaseTwoAction;
+  action: ResolvedPhaseTwoAction;
   targetTurfId: string | null;
 }
 

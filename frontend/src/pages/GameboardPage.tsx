@@ -17,6 +17,7 @@ export function GameboardPage() {
   const [selectedPhaseTwoAction, setSelectedPhaseTwoAction] = useState<PhaseTwoAction>("earn");
   const [targetTurfId, setTargetTurfId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [startingGame, setStartingGame] = useState(false);
 
   async function refreshOpenGames() {
     const result = await gamesApi.listOpenGames();
@@ -104,15 +105,19 @@ export function GameboardPage() {
   }
 
   async function handleStartGame() {
-    if (!game) return;
+    if (!game || startingGame) return;
     setError(null);
+    setStartingGame(true);
     try {
       const started = await gamesApi.startGame(game.id);
+      if (started.status !== "active") throw new Error("The server did not activate the game. Refresh and try again.");
       setGame(started);
       setBoard(await gamesApi.getGame(game.id));
       setActionStatus(await gamesApi.getActionStatus(game.id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not start game");
+    } finally {
+      setStartingGame(false);
     }
   }
 
@@ -203,7 +208,16 @@ export function GameboardPage() {
           )}
           {gang && <p>Gang: {gang.name} | Money: ${gang.money} | Members: {gang.members} | Notoriety: {gang.notoriety}</p>}
           {game.status === "lobby" && game.creatorUserId === user?.id && (
-            <button type="button" onClick={() => void handleStartGame()}>Start game</button>
+            <>
+              <p>{game.gangCount}/{game.memberCount} gangs created</p>
+              <button
+                type="button"
+                disabled={startingGame || game.memberCount < 2 || game.gangCount !== game.memberCount}
+                onClick={() => void handleStartGame()}
+              >
+                {startingGame ? "Starting..." : "Start game"}
+              </button>
+            </>
           )}
           {board && (board.game.status === "active" || board.game.status === "finished") && (
             <section>

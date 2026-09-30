@@ -41,7 +41,7 @@ Body: `{ "maxPlayers": 2 }` where `maxPlayers` is an integer from 2 through 8.
 Auth required. Joins an open lobby. Returns 409 if the lobby is full or already started.
 
 ### `POST /api/games/:gameId/start`
-Auth required. Creator-only. Requires at least two joined players, creates 20 unique named neutral Turfs, and activates the game.
+Auth required. Creator-only. Requires at least two joined players and a gang created by every joined player; creates 20 unique named neutral Turfs and activates the game. Returns 409 with a readiness message if any player has not created a gang yet.
 
 ### `GET /api/games/:gameId`
 Auth required and membership required. Returns the current lobby/game summary. Full board data lands in M3.

@@ -147,11 +147,18 @@ export async function startGame(
     if (game.rows[0].creator_user_id !== userId) throw new GameError('Only the creator can start the game', 403);
     if (game.rows[0].status !== 'lobby') throw new GameError('Game has already started', 409);
 
-    const members = await client.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM game_members WHERE game_id = $1`,
+    const members = await client.query<{ member_count: string; gang_count: string }>(
+      `SELECT
+         (SELECT COUNT(*) FROM game_members WHERE game_id = $1)::text AS member_count,
+         (SELECT COUNT(*) FROM gangs WHERE game_id = $1)::text AS gang_count`,
       [gameId],
     );
-    if (Number(members.rows[0].count) < 2) throw new GameError('At least 2 players are required', 409);
+    const memberCount = Number(members.rows[0].member_count);
+    const gangCount = Number(members.rows[0].gang_count);
+    if (memberCount < 2) throw new GameError('At least 2 players are required', 409);
+    if (gangCount !== memberCount) {
+      throw new GameError('Every joined player must create a gang before the game can start', 409);
+    }
     if (turfNames.length !== 20) throw new Error('A game must start with exactly 20 Turfs');
 
     for (const label of turfNames) {
@@ -162,7 +169,9 @@ export async function startGame(
       [gameId],
     );
     await client.query('COMMIT');
-    return getGameSummary(pool, gameId) as Promise<GameSummary>;
+    const summary = await getGameSummary(pool, gameId);
+    if (!summary) throw new Error('Started game could not be loaded');
+    return summary;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

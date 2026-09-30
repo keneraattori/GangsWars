@@ -75,6 +75,13 @@ export function listOpenGames(): Promise<{ games: GameSummary[] }> {
   return request("/api/games/open");
 }
 
+export function deleteAllGames(): Promise<{ deletedCount: number }> {
+  return request("/api/games/all", {
+    method: "DELETE",
+    body: JSON.stringify({ confirmation: "DELETE_ALL_GAMES" }),
+  });
+}
+
 export function createGame(maxPlayers: number): Promise<GameSummary> {
   return request("/api/games", {
     method: "POST",

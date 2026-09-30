@@ -7,7 +7,7 @@ All authenticated routes expect the auth cookie set by `/api/auth/login`. All re
 ## Auth
 
 ### `POST /api/auth/register`
-Body: `{ "username": string, "email": string, "password": string }`
+Body: `{ "username": string, "password": string, "email"?: string }` (email is optional)
 201 → `{ "id": string, "username": string }`
 
 ### `POST /api/auth/login`
@@ -36,6 +36,9 @@ Auth required. Returns open lobby summaries with `id`, `maxPlayers`, `memberCoun
 ### `POST /api/games`
 Auth required. Creates a lobby and automatically joins the creator.
 Body: `{ "maxPlayers": 2 }` where `maxPlayers` is an integer from 2 through 8.
+
+### `DELETE /api/games/all`
+Auth required. Permanently deletes every game and its dependent memberships, gangs, Turfs, actions, and results for all players. Body must be `{ "confirmation": "DELETE_ALL_GAMES" }`; this route is exposed in the UI behind an explicit browser confirmation.
 
 ### `POST /api/games/:gameId/join`
 Auth required. Joins an open lobby. Returns 409 if the lobby is full or already started.

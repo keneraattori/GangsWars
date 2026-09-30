@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { pool } from '../../db/pool.js';
 import {
   createGame,
+  deleteAllGames,
   GameError,
   getGameSummary,
   isGameMember,
@@ -34,6 +35,25 @@ const maxPlayersSchema = z.object({
 router.get('/open', async (_req, res, next) => {
   try {
     res.json({ games: await listOpenGames(pool) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/all', async (req, res, next) => {
+  const confirmationSchema = z.object({ confirmation: z.literal('DELETE_ALL_GAMES') });
+  const parsed = confirmationSchema.safeParse(req.body);
+  if (!req.userId) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Explicit confirmation is required' });
+    return;
+  }
+  try {
+    const deletedCount = await deleteAllGames(pool);
+    res.json({ deletedCount });
   } catch (error) {
     next(error);
   }

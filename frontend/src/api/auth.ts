@@ -13,12 +13,12 @@ async function parseJsonOrThrow(res: Response) {
   return body;
 }
 
-export async function register(username: string, email: string, password: string): Promise<AuthUser> {
+export async function register(username: string, password: string): Promise<AuthUser> {
   const res = await fetch(`${BASE}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ username, email, password }),
+    body: JSON.stringify({ username, password }),
   });
   return parseJsonOrThrow(res);
 }

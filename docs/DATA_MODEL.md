@@ -7,7 +7,7 @@ Draft schema — reflects the decisions recorded in [GAME_DESIGN.md §7](GAME_DE
 |---|---|---|
 | id | uuid PK | |
 | username | text, unique | |
-| email | text, unique | |
+| email | text, unique, nullable | Optional at registration; existing account emails are retained |
 | password_hash | text | bcrypt/argon2 |
 | created_at | timestamptz | |
 

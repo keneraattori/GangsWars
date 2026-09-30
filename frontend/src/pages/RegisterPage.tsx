@@ -7,7 +7,6 @@ export function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -15,7 +14,7 @@ export function RegisterPage() {
     e.preventDefault();
     setError(null);
     try {
-      await register(username, email, password);
+      await register(username, password);
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -29,15 +28,6 @@ export function RegisterPage() {
         <label>
           Username
           <input value={username} onChange={(e) => setUsername(e.target.value)} required />
-        </label>
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
         </label>
         <label>
           Password

@@ -18,6 +18,7 @@ export function GameboardPage() {
   const [targetTurfId, setTargetTurfId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [startingGame, setStartingGame] = useState(false);
+  const [deletingGames, setDeletingGames] = useState(false);
 
   async function refreshOpenGames() {
     const result = await gamesApi.listOpenGames();
@@ -76,6 +77,28 @@ export function GameboardPage() {
       await refreshOpenGames();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create game");
+    }
+  }
+
+  async function handleDeleteAllGames() {
+    const confirmed = window.confirm(
+      "Delete every game for every player? This permanently removes all lobbies, matches, gangs, Turfs, and action logs.",
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    setDeletingGames(true);
+    try {
+      await gamesApi.deleteAllGames();
+      setGames([]);
+      setGame(null);
+      setBoard(null);
+      setGang(null);
+      setActionStatus(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not delete games");
+    } finally {
+      setDeletingGames(false);
     }
   }
 
@@ -189,6 +212,9 @@ export function GameboardPage() {
               <button type="button" onClick={() => void handleJoin(openGame)}>Join</button>
             </p>
           ))}
+          <button type="button" disabled={deletingGames} onClick={() => void handleDeleteAllGames()}>
+            {deletingGames ? "Removing games..." : "Remove all games"}
+          </button>
         </section>
       )}
 

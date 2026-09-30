@@ -33,7 +33,7 @@ const registerSchema = z.object({
     .min(3)
     .max(20)
     .regex(/^[a-zA-Z0-9_]+$/, "username may only contain letters, numbers, and underscores"),
-  email: z.string().email(),
+  email: z.union([z.string().email(), z.literal('')]).optional(),
   password: z.string().min(8).max(200),
 });
 
@@ -47,7 +47,7 @@ router.post("/register", authRateLimit, async (req, res) => {
 
   try {
     const passwordHash = await hashPassword(password);
-    const user = await createUser(pool, { username, email, passwordHash });
+    const user = await createUser(pool, { username, email: email || null, passwordHash });
     const token = signAuthToken({ sub: user.id, username: user.username });
     setAuthCookie(res, token);
     res.status(201).json({ id: user.id, username: user.username });

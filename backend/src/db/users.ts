@@ -4,7 +4,7 @@ import type { User } from "../models/user.js";
 interface UserRow {
   id: string;
   username: string;
-  email: string;
+  email: string | null;
   password_hash: string;
   created_at: Date;
 }
@@ -21,7 +21,7 @@ function toUser(row: UserRow): User {
 
 export async function createUser(
   pool: Pool,
-  input: { username: string; email: string; passwordHash: string },
+  input: { username: string; email: string | null; passwordHash: string },
 ): Promise<User> {
   const result = await pool.query<UserRow>(
     `INSERT INTO users (username, email, password_hash)

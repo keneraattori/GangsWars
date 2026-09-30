@@ -81,6 +81,11 @@ export async function listOpenGames(pool: Pool): Promise<GameSummary[]> {
   return result.rows.map(toSummary);
 }
 
+export async function deleteAllGames(pool: Pool): Promise<number> {
+  const result = await pool.query('DELETE FROM games');
+  return result.rowCount ?? 0;
+}
+
 export async function joinGame(pool: Pool, gameId: string, userId: string): Promise<GameSummary> {
   const client = await pool.connect();
   try {

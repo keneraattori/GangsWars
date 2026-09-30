@@ -210,6 +210,10 @@ export function GameboardPage() {
           {game.status === "lobby" && game.creatorUserId === user?.id && (
             <>
               <p>{game.gangCount}/{game.memberCount} gangs created</p>
+              {game.memberCount < 2 && <p>Waiting for at least 2 players before starting.</p>}
+              {game.memberCount >= 2 && game.gangCount < game.memberCount && (
+                <p>Each joined player must create a gang before starting.</p>
+              )}
               <button
                 type="button"
                 disabled={startingGame || game.memberCount < 2 || game.gangCount !== game.memberCount}

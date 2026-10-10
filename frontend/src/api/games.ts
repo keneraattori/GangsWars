@@ -1,6 +1,5 @@
 export interface GameSummary {
   id: string;
-  creatorUserId: string;
   maxPlayers: number;
   status: "lobby" | "active" | "finished";
   memberCount: number;
@@ -16,6 +15,7 @@ export interface GangSummary {
   members: number;
   notoriety: number;
   turfsHeld: number;
+  characterId: number;
 }
 
 export interface TurfSummary {
@@ -45,8 +45,15 @@ export interface Gameboard {
   };
   gangs: GangSummary[];
   turfs: TurfSummary[];
+  protectedGangIds: string[];
   neutralTurfs: number;
   actionLog: ActionLogEntry[];
+}
+
+export interface PublicGameboard extends Omit<Gameboard, "gangs"> {
+  gangs: Omit<GangSummary, "gameId" | "userId">[];
+  submittedCount: number;
+  totalGangCount: number;
 }
 
 export type PhaseOneAction = "beef" | "buzinezz" | "show_off" | "attack";
@@ -58,6 +65,7 @@ export interface ActionStatus {
   submittedCount: number;
   totalGangCount: number;
   hasSubmitted: boolean;
+  submittedAction: string | null;
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -75,30 +83,20 @@ export function listOpenGames(): Promise<{ games: GameSummary[] }> {
   return request("/api/games/open");
 }
 
-export function deleteAllGames(): Promise<{ deletedCount: number }> {
-  return request("/api/games/all", {
-    method: "DELETE",
-    body: JSON.stringify({ confirmation: "DELETE_ALL_GAMES" }),
-  });
-}
-
-export function createGame(maxPlayers: number): Promise<GameSummary> {
-  return request("/api/games", {
-    method: "POST",
-    body: JSON.stringify({ maxPlayers }),
-  });
-}
-
 export function getGame(gameId: string): Promise<Gameboard> {
   return request(`/api/games/${gameId}`);
 }
 
-export function joinGame(gameId: string): Promise<GameSummary> {
-  return request(`/api/games/${gameId}/join`, { method: "POST" });
+export function getPublicGameboard(gameId: string): Promise<PublicGameboard> {
+  return request(`/api/games/public/${gameId}`);
 }
 
-export function startGame(gameId: string): Promise<GameSummary> {
-  return request(`/api/games/${gameId}/start`, { method: "POST" });
+export function getMyGame(): Promise<{ game: GameSummary | null }> {
+  return request("/api/games/mine");
+}
+
+export function joinGame(gameId: string): Promise<GameSummary> {
+  return request(`/api/games/${gameId}/join`, { method: "POST" });
 }
 
 export function getMyGang(gameId: string): Promise<GangSummary | null> {
@@ -108,10 +106,10 @@ export function getMyGang(gameId: string): Promise<GangSummary | null> {
   });
 }
 
-export function createGang(gameId: string, name: string): Promise<GangSummary> {
+export function createGang(gameId: string, characterId: number): Promise<GangSummary> {
   return request(`/api/games/${gameId}/gangs`, {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ characterId }),
   });
 }
 

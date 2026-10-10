@@ -1,5 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
 import gameRoutes from "./routes/games.js";
 
@@ -13,6 +14,7 @@ export function createApp() {
   });
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/api/games", gameRoutes);
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

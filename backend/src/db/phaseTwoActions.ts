@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { ActionError, getActionStatus, type PhaseTwoAction } from './phaseActions.js';
+import { PHASE_TWO_RECRUIT_COST } from '../services/phaseTwoResolution.js';
 
 interface GameRow {
   status: 'lobby' | 'active' | 'finished';
@@ -27,13 +28,16 @@ export async function submitPhaseTwoAction(
     if (game.rows[0].status !== 'active') throw new ActionError('Game is not active', 409);
     if (game.rows[0].current_phase !== 'phase2') throw new ActionError('Phase 2 is not active', 409);
 
-    const gang = await client.query<{ id: string }>(
-      `SELECT ga.id FROM gangs ga
+    const gang = await client.query<{ id: string; money: number }>(
+      `SELECT ga.id, ga.money FROM gangs ga
        JOIN game_members gm ON gm.game_id = ga.game_id AND gm.user_id = ga.user_id
        WHERE ga.game_id = $1 AND ga.user_id = $2`,
       [input.gameId, input.userId],
     );
     if (!gang.rows[0]) throw new ActionError('Create a gang before selecting an action', 403);
+    if (input.action === 'recruit' && gang.rows[0].money < PHASE_TWO_RECRUIT_COST) {
+      throw new ActionError('Recruit requires at least $3,000', 400);
+    }
 
     const existing = await client.query(
       `SELECT 1 FROM phase_actions

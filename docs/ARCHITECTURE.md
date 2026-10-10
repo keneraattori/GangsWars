@@ -1,93 +1,90 @@
 # Architecture
 
-## 1. Overview
+## 1. System Overview
+
+The application is a TypeScript npm-workspace monorepo. The React frontend communicates with a Node/Express API over JSON; the API persists state in PostgreSQL. During local development Vite proxies `/api` requests to Express.
 
 ```mermaid
 flowchart LR
-    subgraph Client
-        FE[React SPA]
-    end
-    subgraph Local["Local Dev"]
-        EX[Express API server]
-        PG[(PostgreSQL - Docker)]
-    end
-    subgraph Azure["Azure (Production)"]
-        SWA[Azure Static Web Apps<br/>hosts React build]
-        FUNC[Azure Functions<br/>same API code, HTTP-triggered]
-        APG[(Azure Database for PostgreSQL)]
-    end
-
-    FE -->|REST/JSON, local| EX --> PG
-    FE -->|REST/JSON, prod, same routes via SWA /api proxy| FUNC --> APG
+    Browser[React + Vite frontend] -->|JSON /api requests| Express[Express + TypeScript API]
+    Express -->|parameterized SQL| Postgres[(PostgreSQL)]
+    Express --> Worker[15-second phase-timeout worker]
+    Worker --> Postgres
 ```
 
-The backend is written **once** as a set of route handlers / services and run two ways:
-- **Locally**: a plain Express server (`backend/`) for fast iteration, easy debugging, no Azure account needed.
-- **In Azure**: the same handlers wrapped as Azure Functions (`backend/functions` or a `swa-cli`-managed `api/` folder) sitting behind Azure Static Web Apps' built-in `/api` routing.
+Azure hosting is not implemented yet. The deployment document records a possible future target; there are currently no Azure Functions adapters in the backend.
 
-Keeping game logic in framework-agnostic **service modules** (see below) is what makes this dual-run setup possible without duplicating logic.
+## 2. Runtime Components
 
-## 2. Key architectural decisions
+### Frontend
 
-| Decision | Reasoning |
-|---|---|
-| Game rules live in pure, framework-free `services/` modules (no Express/Functions objects touch them) | Same code runs under Express locally and Azure Functions in prod; also makes rules unit-testable in isolation |
-| RNG is an injectable dependency (not a direct `Math.random()` call sprinkled through logic) | Enables deterministic unit tests of phase resolution (seeded RNG) |
-| Phase resolution is a single pure function: `(gameState, submittedActions) => { newGameState, actionLog }` | Matches the "modular architecture" principle — one well-defined, testable unit instead of tangled per-request logic |
-| Auth uses JWT (httpOnly cookie) issued by the backend | Works identically against Express and Azure Functions; no server-side session store needed |
-| DB access through a single `db/` module using `pg` (node-postgres) + plain SQL or a lightweight query builder | Keeps a thin, auditable data layer; avoids heavy ORM lock-in while the schema is still evolving |
-| Frontend state for "current game" fetched via polling (short interval) for MVP | Simplest option that works with Azure Functions (no persistent WebSocket); can be swapped for Azure SignalR/WebPubSub later without changing game logic |
+- `frontend/src/pages/` contains the front page (gang-name entry plus admin login), the player lobby/Gameboard, and the admin page.
+- `frontend/src/api/` contains typed fetch wrappers; authenticated requests include the `gw_token` cookie.
+- `frontend/src/state/` contains the player context (entering and leaving the lobby).
+- `frontend/public/characters/` serves the 21 gang portrait PNGs as `/characters/character_NN.png`.
+- The open-lobby list refreshes every two seconds. A selected game and its action status also refresh every two seconds. This is polling, not push messaging.
+- The active game view groups the player's gang and action controls, shared gang/action history, and Turf ownership into a responsive board.
 
-## 3. Repository layout
+### Backend
 
-```
+- `backend/src/http/` creates the Express app, authenticates requests, and mounts routes.
+- `backend/src/db/` owns the PostgreSQL pool, migrations, transactional persistence, and queries.
+- `backend/src/services/` contains game resolution rules and phase-timeout processing.
+- `backend/test/` tests pure rules and selected API behavior using Vitest.
+- The timeout worker in `backend/src/http/server.ts` checks expired phases every 15 seconds; missing actions are persisted as server-generated `skip` actions and resolved.
+- `backend/src/db/pool.ts` loads `backend/.env` relative to its module before constructing the shared pool, so startup does not depend on the shell's working directory.
+
+### Database and game flow
+
+- Games are created by the admin, who is not a game member. Joining is a separate membership operation; it does not create or reuse another player's gang.
+- Each member creates one gang named after their player name and selects one of 21 portraits. `(game_id, user_id)` and `(game_id, character_id)` are unique, so a player can have one gang and a portrait can be used only once per game. The database is the final authority if two requests race for the same portrait.
+- The admin can start a lobby only with at least two members and one gang per member. Starting creates 20 named neutral Turfs.
+- Each round has Phase 1 and Phase 2. Submitted actions remain private until resolution; action status exposes the current player's own submitted action and submission counts.
+- Phase resolution runs in a transaction through the persistence adapter and calls a pure service resolver. Results, rolls, and outcomes are stored for the shared Action log.
+- Protect applies a `-2` modifier to an incoming contested Expand targeting that gang's Turf in the same Phase 2 resolution.
+
+## 3. Repository Layout
+
+```text
 gang-turf-wars/
-├── .github/
-│   ├── copilot-instructions.md      # repo-wide AI agent instructions
-│   └── workflows/
-│       ├── ci.yml                   # lint + unit tests on every PR
-│       └── deploy.yml               # build & deploy to Azure Static Web Apps on merge to main
-├── docs/                            # this folder
-│   ├── GAME_DESIGN.md
-│   ├── ARCHITECTURE.md
-│   ├── DATA_MODEL.md
-│   ├── API_CONTRACT.md
-│   ├── ROADMAP.md
-│   ├── LOCAL_DEV.md
-│   ├── DEPLOYMENT.md
-│   └── CONTRIBUTING.md
-├── frontend/                        # React app (Vite)
-│   ├── src/
-│   │   ├── pages/                  # Gameboard, Login, Register, GangCreate
-│   │   ├── components/             # small reusable UI pieces
-│   │   ├── api/                    # fetch wrappers to backend
-│   │   └── state/                  # client-side state (context/store)
-│   └── public/
 ├── backend/
-│   ├── src/
-│   │   ├── http/                   # Express app + route wiring (local runner)
-│   │   ├── functions/              # Azure Functions entry points (thin wrappers calling services/)
-│   │   ├── services/               # pure game logic: auth, gang, turf, phase-resolution, rng
-│   │   ├── models/                 # typed row/entity shapes
-│   │   └── db/                     # connection pool, migrations, queries
-│   └── test/                       # unit tests for services/
-├── shared/                          # types & constants shared FE/BE (action enums, DTO shapes)
-├── infra/                           # Bicep templates for Azure resources (added at deploy milestone)
-└── docker-compose.yml               # local Postgres for `LOCAL_DEV.md`
+│   ├── src/db/           # PostgreSQL queries, pool, migrations
+│   ├── src/http/         # Express app, routes, auth middleware, server
+│   ├── src/models/       # backend model types
+│   ├── src/services/     # game rules and timeout worker
+│   └── test/             # Vitest tests
+├── docs/                 # architecture, rules, API, setup, and roadmap
+├── frontend/
+│   ├── public/           # banner and gang character portraits
+│   └── src/              # React pages, API clients, state, and styles
+├── infra/                # reserved for future deployment infrastructure
+├── pictures/             # original game artwork
+├── shared/               # shared workspace package
+├── docker-compose.yml    # local PostgreSQL
+└── package.json          # npm workspace scripts
 ```
 
-## 4. Auth flow (planned)
+## 4. Key Decisions
 
-1. `POST /api/auth/register` — email/username + password (hashed with bcrypt) → creates `users` row.
-2. `POST /api/auth/login` — verifies password, issues JWT in an httpOnly, `Secure`, `SameSite=Strict` cookie.
-3. Subsequent requests carry the cookie; backend middleware verifies JWT and attaches `userId` to the request.
-4. `POST /api/gangs` (create gang) requires auth; one gang per user per game (see Open Questions in GAME_DESIGN.md).
+| Decision | Implementation |
+|---|---|
+| Keep rules separate from HTTP and persistence | Pure resolution services are called by database adapters; routes validate and dispatch requests. |
+| Inject randomness into rules | Tests supply deterministic `randomInt` and `rollDice` functions. |
+| Use PostgreSQL with parameterized SQL | Persistence and transaction boundaries live in `backend/src/db/`. |
+| Use cookie-based authentication | The API signs JWTs into the httpOnly `gw_token` (player) and `gw_admin_token` (admin) cookies. |
+| Poll for multiplayer updates in the MVP | The frontend refreshes lobby/game state every two seconds; no WebSocket service is implemented. |
+| Enforce portrait uniqueness in storage | A per-game unique constraint handles concurrent gang creation requests. |
 
-## 5. Security notes (OWASP-aligned, to enforce during implementation)
+## 5. Authentication and Security
 
-- Passwords hashed with bcrypt/argon2, never stored/logged in plaintext.
-- All SQL via parameterized queries — no string-concatenated SQL.
-- JWT secret stored in environment variables / Azure Key Vault or SWA app settings, never committed.
-- Input validation on every endpoint (gang name length/charset, action enum whitelist, etc.) both client- and server-side; server-side is the one that matters for security.
-- Rate-limit auth endpoints to reduce brute-force risk (even a basic in-memory limiter for MVP).
-- CORS locked to the deployed frontend origin in production.
+Players have no passwords. Entering a gang name on the front page creates an anonymous users row (the name is unique, case-insensitive) and sets an httpOnly, SameSite=Strict gw_token cookie; player routes validate the JWT and that the player still exists. The admin logs in with the ADMIN_USERNAME/ADMIN_PASSWORD environment variables (compared in constant time; login is disabled until a password is set) and receives a separate gw_admin_token cookie whose JWT carries ole: admin. Admin routes under /api/admin accept only that cookie.
+
+- SQL values are passed as parameters.
+- Request bodies are validated server-side with Zod.
+- Entering the lobby and admin login are rate limited.
+- `DATABASE_URL`, `JWT_SECRET`, and `ADMIN_PASSWORD` are loaded from `backend/.env` locally and must be provided through a secret store or deployment settings in production.
+- The global delete-games endpoint is admin-only and requires an explicit confirmation value.
+
+## 6. Future Hosting
+
+The current backend is an Express server, not an Azure Functions application. If Azure hosting is pursued, validate the hosting adapter and PostgreSQL connectivity before claiming route parity. See [DEPLOYMENT.md](DEPLOYMENT.md) for the prospective deployment plan.

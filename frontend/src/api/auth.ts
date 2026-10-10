@@ -1,4 +1,4 @@
-const BASE = "/api/auth";
+﻿const BASE = "/api/auth";
 
 export interface AuthUser {
   id: string;
@@ -13,22 +13,12 @@ async function parseJsonOrThrow(res: Response) {
   return body;
 }
 
-export async function register(username: string, password: string): Promise<AuthUser> {
-  const res = await fetch(`${BASE}/register`, {
+export async function enter(name: string): Promise<AuthUser> {
+  const res = await fetch(`${BASE}/enter`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ username, password }),
-  });
-  return parseJsonOrThrow(res);
-}
-
-export async function login(username: string, password: string): Promise<AuthUser> {
-  const res = await fetch(`${BASE}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ name }),
   });
   return parseJsonOrThrow(res);
 }

@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { resolvePhase1, type RandomInt } from '../services/phaseResolution.js';
+import { getActiveProtectedGangIds } from '../services/protectDuration.js';
 import { ActionError } from './phaseActions.js';
 
 interface GameRow {
@@ -11,6 +12,7 @@ interface GameRow {
 interface GangRow {
   id: string;
   members: number;
+  notoriety: number;
 }
 
 interface ActionRow {
@@ -20,10 +22,16 @@ interface ActionRow {
   target_gang_id: string | null;
 }
 
+interface ProtectActionRow {
+  gang_id: string;
+  round_number: number;
+}
+
 export interface PhaseResolutionSummary {
   roundNumber: number;
   actionCount: number;
   memberDeltas: Record<string, number>;
+  notorietyDeltas: Record<string, number>;
 }
 
 export async function resolvePhaseOneForGame(
@@ -45,7 +53,7 @@ export async function resolvePhaseOneForGame(
     }
 
     const gangsResult = await client.query<GangRow>(
-      `SELECT id, members FROM gangs WHERE game_id = $1`,
+      `SELECT id, members, notoriety FROM gangs WHERE game_id = $1`,
       [gameId],
     );
     const actionsResult = await client.query<ActionRow>(
@@ -54,6 +62,13 @@ export async function resolvePhaseOneForGame(
        WHERE game_id = $1 AND round_number = $2 AND phase = 'phase1'
        ORDER BY submitted_at ASC, id ASC`,
       [gameId, game.round_number],
+    );
+    const protectActionsResult = await client.query<ProtectActionRow>(
+      `SELECT gang_id, round_number
+       FROM phase_actions
+       WHERE game_id = $1 AND phase = 'phase2' AND action = 'protect'
+         AND round_number >= $2 AND round_number < $3`,
+      [gameId, Math.max(1, game.round_number - 2), game.round_number],
     );
     if (actionsResult.rowCount !== gangsResult.rowCount) {
       throw new ActionError('Not every gang has selected a Phase 1 action', 409);
@@ -68,10 +83,17 @@ export async function resolvePhaseOneForGame(
       })),
       gangsResult.rows,
       randomInt,
+      getActiveProtectedGangIds(protectActionsResult.rows.map((action) => ({
+        gangId: action.gang_id,
+        roundNumber: action.round_number,
+      })), game.round_number),
     );
 
     for (const [gangId, delta] of Object.entries(resolution.memberDeltas)) {
       await client.query(`UPDATE gangs SET members = members + $1 WHERE id = $2`, [delta, gangId]);
+    }
+    for (const [gangId, delta] of Object.entries(resolution.notorietyDeltas)) {
+      await client.query(`UPDATE gangs SET notoriety = notoriety + $1 WHERE id = $2`, [delta, gangId]);
     }
     for (const result of resolution.actionResults) {
       await client.query(
@@ -91,6 +113,7 @@ export async function resolvePhaseOneForGame(
       roundNumber: game.round_number,
       actionCount: resolution.actionResults.length,
       memberDeltas: resolution.memberDeltas,
+      notorietyDeltas: resolution.notorietyDeltas,
     };
   } catch (error) {
     await client.query('ROLLBACK');

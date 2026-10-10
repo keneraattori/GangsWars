@@ -17,11 +17,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     user,
     loading,
-    login: async (username, password) => {
-      setUser(await authApi.login(username, password));
-    },
-    register: async (username, password) => {
-      setUser(await authApi.register(username, password));
+    enter: async (name) => {
+      setUser(await authApi.enter(name));
     },
     logout: async () => {
       await authApi.logout();

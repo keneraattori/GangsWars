@@ -7,8 +7,8 @@ Draft schema — reflects the decisions recorded in [GAME_DESIGN.md §7](GAME_DE
 |---|---|---|
 | id | uuid PK | |
 | username | text, unique | |
-| email | text, unique, nullable | Optional at registration; existing account emails are retained |
-| password_hash | text | bcrypt/argon2 |
+| email | text, unique, nullable | Legacy; unused now that players no longer register |
+| password_hash | text, nullable | Legacy; players are passwordless |
 | created_at | timestamptz | |
 
 ## `games`
@@ -16,7 +16,7 @@ A single match/lobby.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| creator_user_id | uuid FK → users.id | creator can start the game |
+| creator_user_id | uuid FK → users.id, nullable | legacy; games are created and started by the admin, who is not a user |
 | status | enum: `lobby`, `active`, `finished` | |
 | max_players | int | 2–8, set at game creation |
 | round_number | int, default 1 | |
@@ -24,7 +24,7 @@ A single match/lobby.
 | phase_deadline | timestamptz, nullable | set when the current phase opens; phase auto-resolves 10 minutes after opening even if not all gangs submitted |
 | winner_gang_id | uuid FK → gangs.id, nullable | set when a gang reaches 12 turfs |
 | created_at | timestamptz | |
-| started_at | timestamptz, nullable | set when the creator starts the game |
+| started_at | timestamptz, nullable | set when the admin starts the game |
 
 ## `game_members`
 Join records are separate from gangs so a user can join a lobby before naming their gang.
@@ -42,12 +42,16 @@ One gang per user per game.
 | id | uuid PK | |
 | game_id | uuid FK → games.id | |
 | user_id | uuid FK → users.id | |
-| name | text | user-provided |
+| name | text | user-provided; unique within a game |
+| character_id | integer, not null | required portrait ID, 1–21; unique within a game |
 | money | int, default 10000 | |
 | members | int, default 20 | |
 | notoriety | int, default 0 | |
 | created_at | timestamptz | |
 | unique (game_id, user_id) | | one gang per user per game |
+| unique (game_id, name) | | gang names are unique within a game |
+| unique (game_id, character_id) | | one gang per portrait per game |
+| check (character_id BETWEEN 1 AND 21) | | matches the available character portrait assets |
 
 ## `turfs`
 20 rows created per game at start, named from the [TURF_NAMES.md](TURF_NAMES.md) pool (random, unique per game, purely cosmetic).
@@ -68,13 +72,13 @@ One row per gang per phase per round — the player's submitted choice. M4 write
 | phase | enum: `phase1`, `phase2` | |
 | gang_id | uuid FK → gangs.id | |
 | action | enum: `beef`,`buzinezz`,`show_off`,`attack`,`earn`,`expand`,`recruit`,`protect`,`skip` | `skip` is server-generated only when a phase deadline expires |
-| target_gang_id | uuid FK → gangs.id, nullable | used by beef/attack/expand |
-| target_turf_id | uuid FK → turfs.id, nullable | used by expand |
+| target_gang_id | uuid FK → gangs.id, nullable | used by Beef and Attack |
+| target_turf_id | uuid FK → turfs.id, nullable | used by Expand |
 | submitted_at | timestamptz | |
 | unique (game_id, round_number, phase, gang_id) | | one action per gang per phase |
 
 ## `action_results` (Action Log)
-One row per resolved action — what the Gameboard displays. M5 writes these rows when the final Phase 1 action arrives.
+One row per resolved action — what the Gameboard displays. The Phase 1 and Phase 2 resolution adapters write these rows when a phase resolves.
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
@@ -87,9 +91,9 @@ One row per resolved action — what the Gameboard displays. M5 writes these row
 - Index `phase_actions (game_id, round_number, phase)` for fast "has everyone submitted?" checks.
 - Index `turfs (game_id, owner_gang_id)` for gameboard queries.
 
-## Cross-round lookups needed by the resolver
+## Resolver lookups
 - **Beef/Buzinezz/Show off! bonuses**: when resolving a Phase 2 action, look up that gang's Phase 1 `phase_actions` row from the *same* round.
-- **Protect penalty**: when resolving a Phase 1 Expand/Attack in round N, look up whether the target gang selected Protect in round **N-1**'s Phase 2 `phase_actions`.
+- **Protect penalty**: during Phase 2 resolution, check which gangs selected Protect in that phase. An Expand targeting a Turf currently owned by a protecting gang receives a -2 modifier to its roll total. The penalty is recorded in the expansion's `roll_result`; the Protect result records `expandPenalty: -2`.
 - **Simultaneous Expand conflicts**: when multiple `phase_actions` in the same `(game_id, round_number, phase)` target the same `target_turf_id`, resolve via the roll-off described in [GAME_DESIGN.md](GAME_DESIGN.md) instead of independently.
 
 ## Migration strategy

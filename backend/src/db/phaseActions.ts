@@ -13,6 +13,7 @@ export interface ActionStatus {
   submittedCount: number;
   totalGangCount: number;
   hasSubmitted: boolean;
+  submittedAction: string | null;
 }
 
 interface GameActionRow {
@@ -91,6 +92,7 @@ export async function getActionStatus(pool: Pool, gameId: string, userId: string
     submitted_count: string;
     total_gang_count: string;
     has_submitted: boolean;
+    submitted_action: string | null;
   }>(
     `SELECT g.round_number, g.current_phase,
       (SELECT COUNT(*) FROM phase_actions pa
@@ -101,7 +103,11 @@ export async function getActionStatus(pool: Pool, gameId: string, userId: string
         JOIN gangs ga ON ga.id = pa.gang_id
         WHERE pa.game_id = g.id AND pa.round_number = g.round_number
           AND pa.phase = g.current_phase AND ga.user_id = $2
-      ) AS has_submitted
+      ) AS has_submitted,
+      (SELECT pa.action FROM phase_actions pa
+       JOIN gangs ga ON ga.id = pa.gang_id
+       WHERE pa.game_id = g.id AND pa.round_number = g.round_number
+         AND pa.phase = g.current_phase AND ga.user_id = $2) AS submitted_action
      FROM games g WHERE g.id = $1`,
     [gameId, userId],
   );
@@ -112,6 +118,7 @@ export async function getActionStatus(pool: Pool, gameId: string, userId: string
     submittedCount: Number(result.rows[0].submitted_count),
     totalGangCount: Number(result.rows[0].total_gang_count),
     hasSubmitted: result.rows[0].has_submitted,
+    submittedAction: result.rows[0].submitted_action,
   };
 }
 

@@ -1,11 +1,10 @@
-import { createContext, useContext } from "react";
+﻿import { createContext, useContext } from "react";
 import type { AuthUser } from "../api/auth";
 
 export interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  enter: (name: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 

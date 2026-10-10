@@ -1,8 +1,11 @@
 import type { ResolvedPhaseTwoAction } from '../db/phaseActions.js';
 
+export const PHASE_TWO_RECRUIT_COST = 3000;
+
 export interface PhaseTwoGang {
   id: string;
   members: number;
+  money: number;
 }
 
 export interface PhaseTwoTurf {
@@ -47,6 +50,7 @@ export function resolvePhase2(
   turfs: PhaseTwoTurf[],
   phaseOneBonuses: PhaseOneBonusInput[],
   random: PhaseTwoRandom = defaultRandom,
+  activeProtectedGangIds: string[] = [],
 ): PhaseTwoResolution {
   const gangById = new Map(gangs.map((gang) => [gang.id, gang]));
   const turfById = new Map(turfs.map((turf) => [turf.id, turf]));
@@ -55,10 +59,15 @@ export function resolvePhase2(
   const turfOwners: Record<string, string> = {};
   const actionResults: PhaseTwoActionResult[] = [];
   const bonusByGang = new Map<string, PhaseOneBonusInput>();
+  const protectedGangIds = new Set(activeProtectedGangIds);
 
   for (const bonus of phaseOneBonuses) bonusByGang.set(bonus.gangId, bonus);
   for (const action of actions) {
-    if (!gangById.has(action.gangId)) throw new Error(`Unknown acting gang: ${action.gangId}`);
+    const gang = gangById.get(action.gangId);
+    if (!gang) throw new Error(`Unknown acting gang: ${action.gangId}`);
+    if (action.action === 'recruit' && gang.money < PHASE_TWO_RECRUIT_COST) {
+      throw new Error(`Insufficient funds for Recruit: ${action.gangId}`);
+    }
     if (action.action === 'expand' && (!action.targetTurfId || !turfById.has(action.targetTurfId))) {
       throw new Error(`Expand target is missing or unknown for ${action.id}`);
     }
@@ -100,11 +109,13 @@ export function resolvePhase2(
       const base = random.rollDice(2, 6);
       const bonusAmount = bonus?.action === 'show_off' ? 5 : 0;
       rollResult.members = base;
+      outcome.moneySpent = PHASE_TWO_RECRUIT_COST;
       outcome.membersGained = base + bonusAmount;
       if (bonusAmount) outcome.showOffBonus = bonusAmount;
+      moneyDeltas[action.gangId] = (moneyDeltas[action.gangId] ?? 0) - PHASE_TWO_RECRUIT_COST;
       memberDeltas[action.gangId] = (memberDeltas[action.gangId] ?? 0) + base + bonusAmount;
     } else if (action.action === 'protect') {
-      outcome.protectionNextRound = -2;
+      outcome.expandPenalty = -2;
     } else if (action.action === 'expand') {
       const turf = turfById.get(action.targetTurfId as string) as PhaseTwoTurf;
       const currentOwner = turfOwners[turf.id] ?? turf.ownerGangId;
@@ -124,14 +135,19 @@ export function resolvePhase2(
       } else {
         if (targetGangId === action.gangId) throw new Error(`Gang cannot expand into its own Turf: ${turf.id}`);
         const beefBonus = bonus?.action === 'beef' && bonus.targetGangId === targetGangId ? 2 : 0;
+        const protectionPenalty = protectedGangIds.has(targetGangId) ? -2 : 0;
         const roll = random.rollDice(2, 6);
-        const total = roll + beefBonus;
+        const total = roll + beefBonus + protectionPenalty;
         rollResult.base = roll;
         rollResult.bonus = beefBonus;
+        rollResult.protectionPenalty = protectionPenalty;
         rollResult.total = total;
         outcome.targetTurfId = turf.id;
+        outcome.targetGangId = targetGangId;
         outcome.threshold = 8;
-        if (total >= 8) captureTurf(action, turf.id, beefBonus, turfOwners, memberDeltas, outcome, random);
+        if (total >= 8) {
+          captureTurf(action, turf.id, beefBonus, turfOwners, memberDeltas, outcome, random);
+        }
         else outcome.success = false;
       }
     }
@@ -176,11 +192,11 @@ function captureTurf(
   outcome: Record<string, unknown>,
   random: PhaseTwoRandom,
 ): void {
-  const membersGained = random.randomInt(1, 6);
+  const membersLost = random.randomInt(1, 6);
   turfOwners[turfId] = action.gangId;
-  memberDeltas[action.gangId] = (memberDeltas[action.gangId] ?? 0) + membersGained;
+  memberDeltas[action.gangId] = (memberDeltas[action.gangId] ?? 0) - membersLost;
   outcome.success = true;
-  outcome.membersGained = membersGained;
+  outcome.membersLost = membersLost;
   if (beefBonus) outcome.beefBonus = beefBonus;
 }
 

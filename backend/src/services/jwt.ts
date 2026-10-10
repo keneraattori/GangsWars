@@ -1,8 +1,9 @@
-import jwt from "jsonwebtoken";
+﻿import jwt from "jsonwebtoken";
 
 export interface AuthTokenPayload {
-  sub: string; // user id
+  sub: string; // user id for players, "admin" for the administrator
   username: string;
+  role?: "player" | "admin";
 }
 
 const EXPIRES_IN = "7d";

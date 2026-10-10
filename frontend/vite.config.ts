@@ -5,9 +5,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '127.0.0.1',
     proxy: {
       // forwards to the local Express backend (see docs/LOCAL_DEV.md)
-      '/api': 'http://localhost:3000',
+      '/api': 'http://127.0.0.1:3000',
     },
   },
 })

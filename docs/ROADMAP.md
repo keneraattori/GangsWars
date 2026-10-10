@@ -9,14 +9,15 @@ Built in small, independently-shippable milestones. Each milestone should be its
 
 ## M1 — Auth ✅
 - `users` table + migration.
-- Register / login / logout endpoints, JWT cookie auth.
-- Minimal React Login/Register pages wired to the API.
+- Passwordless player entry (gang name) and admin login, JWT cookie auth.
+- Front page with gang-name entry and admin login, plus an admin page, wired to the API.
 
 ## M2 — Game & Gang creation ✅
 - `games`, `game_members`, `gangs`, and `turfs` tables.
 - Authenticated endpoints to create/join/start a game with a chosen lobby size (2–8 players, per [GAME_DESIGN.md](GAME_DESIGN.md)).
 - On game start, create 20 `turfs` rows with unique random names from [TURF_NAMES.md](TURF_NAMES.md).
-- Gang creation form (name input) → shows starting stats (10,000 / 20 / 0).
+- Gang creation requires a name and one of 21 character portraits; portraits are unique within a game, and unavailable choices are marked for joining players.
+- Gang starting stats are 10,000 / 20 / 0.
 
 ## M3 — Read-only Gameboard ✅
 - `GET /api/games/:id` + Gameboard page showing round number, phase, gangs + stats, neutral Turf count, and every named Turf with its owner.
@@ -41,6 +42,8 @@ Built in small, independently-shippable milestones. Each milestone should be its
 - Enforce the 10-minute phase timeout (`games.phase_deadline`) with a 15-second backend worker; missing gangs receive server-generated `skip` actions and the phase resolves.
 - Timeout skips are recorded in the Action Log and have no gameplay effects.
 - Gameboard shows the current phase, submitted count, phase results, and finished-game winner state.
+- Active-game board presents gang stats and action controls, the shared gang list and action log, and Turf ownership in a responsive layout.
+- Protect applies -2 to contested expansions targeting the protecting gang's Turf in the same Phase 2 resolution.
 
 ## M8 — CI
 - GitHub Actions workflow: install, lint, unit test on every PR for both `frontend/` and `backend/`.

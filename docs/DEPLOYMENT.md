@@ -19,12 +19,13 @@ Planned for milestone M9 — nothing here should be provisioned before then. Thi
 - `AZURE_STATIC_WEB_APPS_API_TOKEN` — deployment token from the SWA resource.
 - `DATABASE_URL` — connection string for the Azure Postgres instance, set as an SWA application setting (not baked into the frontend bundle).
 - `JWT_SECRET` — set as an SWA application setting.
+- `ADMIN_USERNAME` / `ADMIN_PASSWORD` — admin login credentials; admin login is disabled until `ADMIN_PASSWORD` is set.
 
 ## Migration path local → Azure
 
 1. Confirm `backend/` handlers are structured so `functions/` entry points are thin adapters calling the same `services/` used by the local Express app (see [ARCHITECTURE.md](ARCHITECTURE.md)).
 2. Point `DATABASE_URL` at the Azure Postgres instance; run migrations against it (same migration files used locally).
-3. Deploy via GitHub Actions; verify `/api/health` and a manual login/gang-creation smoke test in production.
+3. Deploy via GitHub Actions; verify `/api/health` and a manual gang-name entry/admin game-creation smoke test in production.
 
 ## Rollback
 

@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { resolvePhase2, type PhaseTwoRandom } from '../services/phaseTwoResolution.js';
+import { getActiveProtectedGangIds } from '../services/protectDuration.js';
 import { ActionError } from './phaseActions.js';
 
 interface GameRow {
@@ -11,6 +12,7 @@ interface GameRow {
 interface GangRow {
   id: string;
   members: number;
+  money: number;
 }
 
 interface TurfRow {
@@ -29,6 +31,11 @@ interface PhaseOneBonusRow {
   gang_id: string;
   action: 'beef' | 'buzinezz' | 'show_off';
   target_gang_id: string | null;
+}
+
+interface ProtectActionRow {
+  gang_id: string;
+  round_number: number;
 }
 
 export interface PhaseTwoResolutionSummary {
@@ -59,7 +66,7 @@ export async function resolvePhaseTwoForGame(
     }
 
     const gangsResult = await client.query<GangRow>(
-      `SELECT id, members FROM gangs WHERE game_id = $1`,
+      `SELECT id, members, money FROM gangs WHERE game_id = $1`,
       [gameId],
     );
     const turfsResult = await client.query<TurfRow>(
@@ -84,6 +91,13 @@ export async function resolvePhaseTwoForGame(
          AND action IN ('beef', 'buzinezz', 'show_off')`,
       [gameId, game.round_number],
     );
+    const protectActionsResult = await client.query<ProtectActionRow>(
+      `SELECT gang_id, round_number
+       FROM phase_actions
+       WHERE game_id = $1 AND phase = 'phase2' AND action = 'protect'
+         AND round_number >= $2 AND round_number < $3`,
+      [gameId, Math.max(1, game.round_number - 2), game.round_number],
+    );
     const resolution = resolvePhase2(
       actionsResult.rows.map((action) => ({
         id: action.id,
@@ -99,6 +113,10 @@ export async function resolvePhaseTwoForGame(
         targetGangId: bonus.target_gang_id,
       })),
       random,
+      getActiveProtectedGangIds(protectActionsResult.rows.map((action) => ({
+        gangId: action.gang_id,
+        roundNumber: action.round_number,
+      })), game.round_number),
     );
 
     for (const [gangId, delta] of Object.entries(resolution.moneyDeltas)) {

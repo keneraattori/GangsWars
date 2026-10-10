@@ -2,17 +2,15 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../../db/pool.js';
 import {
-  createGame,
-  deleteAllGames,
+  findCurrentGameForUser,
   GameError,
   getGameSummary,
   isGameMember,
   joinGame,
   listOpenGames,
-  startGame,
 } from '../../db/games.js';
 import { createGang, findGangForUser } from '../../db/gangs.js';
-import { getGameboard } from '../../db/gameboard.js';
+import { getGameboard, getPublicGameboard } from '../../db/gameboard.js';
 import {
   ActionError,
   getActionStatus,
@@ -22,15 +20,24 @@ import {
 import { resolvePhaseOneForGame } from '../../db/phaseResolution.js';
 import { submitPhaseTwoAction } from '../../db/phaseTwoActions.js';
 import { resolvePhaseTwoForGame } from '../../db/phaseTwoResolution.js';
-import { requireAuth } from '../middleware/requireAuth.js';
-import { pickTurfNames } from '../../services/turfNames.js';
+import { requirePlayer } from '../middleware/requireAuth.js';
 
 const router = Router();
-router.use(requireAuth);
 
-const maxPlayersSchema = z.object({
-  maxPlayers: z.number().int().min(2).max(8),
+router.get('/public/:gameId', async (req, res, next) => {
+  try {
+    const board = await getPublicGameboard(pool, req.params.gameId);
+    if (!board) {
+      res.status(404).json({ error: 'Game not found' });
+      return;
+    }
+    res.json(board);
+  } catch (error) {
+    next(error);
+  }
 });
+
+router.use(requirePlayer);
 
 router.get('/open', async (_req, res, next) => {
   try {
@@ -40,33 +47,13 @@ router.get('/open', async (_req, res, next) => {
   }
 });
 
-router.delete('/all', async (req, res, next) => {
-  const confirmationSchema = z.object({ confirmation: z.literal('DELETE_ALL_GAMES') });
-  const parsed = confirmationSchema.safeParse(req.body);
+router.get('/mine', async (req, res, next) => {
   if (!req.userId) {
     res.status(401).json({ error: 'Not authenticated' });
     return;
   }
-  if (!parsed.success) {
-    res.status(400).json({ error: 'Explicit confirmation is required' });
-    return;
-  }
   try {
-    const deletedCount = await deleteAllGames(pool);
-    res.json({ deletedCount });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/', async (req, res, next) => {
-  const parsed = maxPlayersSchema.safeParse(req.body);
-  if (!parsed.success || !req.userId) {
-    res.status(400).json({ error: 'maxPlayers must be an integer between 2 and 8' });
-    return;
-  }
-  try {
-    res.status(201).json(await createGame(pool, req.userId, parsed.data.maxPlayers));
+    res.json({ game: await findCurrentGameForUser(pool, req.userId) });
   } catch (error) {
     next(error);
   }
@@ -102,19 +89,6 @@ router.get('/:gameId', async (req, res, next) => {
     res.json(board);
   } catch (error) {
     next(error);
-  }
-});
-
-router.post('/:gameId/start', async (req, res, next) => {
-  if (!req.userId) {
-    res.status(401).json({ error: 'Not authenticated' });
-    return;
-  }
-  try {
-    const turfNames = pickTurfNames(20);
-    res.json(await startGame(pool, req.params.gameId, req.userId, turfNames));
-  } catch (error) {
-    handleGameError(error, res, next);
   }
 });
 
@@ -181,14 +155,14 @@ router.get('/:gameId/actions/status', async (req, res, next) => {
   }
 });
 
-const gangNameSchema = z.object({
-  name: z.string().trim().min(3).max(30),
+const gangSchema = z.object({
+  characterId: z.number().int().min(1).max(21),
 });
 
 router.post('/:gameId/gangs', async (req, res, next) => {
-  const parsed = gangNameSchema.safeParse(req.body);
-  if (!parsed.success || !req.userId) {
-    res.status(400).json({ error: 'Gang name must be between 3 and 30 characters' });
+  const parsed = gangSchema.safeParse(req.body);
+  if (!parsed.success || !req.userId || !req.username) {
+    res.status(400).json({ error: 'Character selection is required' });
     return;
   }
   try {
@@ -206,10 +180,10 @@ router.post('/:gameId/gangs', async (req, res, next) => {
       res.status(409).json({ error: 'Gang creation is closed for this game' });
       return;
     }
-    res.status(201).json(await createGang(pool, req.params.gameId, req.userId, parsed.data.name));
+    res.status(201).json(await createGang(pool, req.params.gameId, req.userId, req.username, parsed.data.characterId));
   } catch (error) {
     if (isUniqueViolation(error)) {
-      res.status(409).json({ error: 'You already have a gang, or that gang name is taken' });
+      res.status(409).json({ error: 'You already have a gang in this game, or the character is taken' });
       return;
     }
     next(error);

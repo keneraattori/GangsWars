@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { getActiveProtectedGangIds } from '../services/protectDuration.js';
 import type { GangSummary } from './gangs.js';
 import type { GameSummary } from './games.js';
 
@@ -29,13 +30,19 @@ export interface Gameboard {
   };
   gangs: GangSummary[];
   turfs: TurfSummary[];
+  protectedGangIds: string[];
   neutralTurfs: number;
   actionLog: ActionLogEntry[];
 }
 
+export interface PublicGameboard extends Omit<Gameboard, 'gangs'> {
+  gangs: Omit<GangSummary, 'gameId' | 'userId'>[];
+  submittedCount: number;
+  totalGangCount: number;
+}
+
 interface GameBoardRow {
   id: string;
-  creator_user_id: string;
   max_players: number;
   status: GameSummary['status'];
   round_number: number;
@@ -55,6 +62,7 @@ interface GangRow {
   members: number;
   notoriety: number;
   turfs_held: string;
+  character_id: number;
 }
 
 interface TurfRow {
@@ -77,7 +85,7 @@ interface ActionLogRow {
 
 export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboard | null> {
   const gameResult = await pool.query<GameBoardRow>(
-    `SELECT g.id, g.creator_user_id, g.max_players, g.status, g.round_number,
+    `SELECT g.id, g.max_players, g.status, g.round_number,
       g.current_phase, g.phase_deadline, g.winner_gang_id,
       COUNT(DISTINCT gm.user_id)::text AS member_count,
       COUNT(DISTINCT ga.id)::text AS gang_count
@@ -89,10 +97,11 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     [gameId],
   );
   if (!gameResult.rows[0]) return null;
+  const game = gameResult.rows[0];
 
   const gangsResult = await pool.query<GangRow>(
     `SELECT ga.id, ga.game_id, ga.user_id, ga.name, ga.money, ga.members, ga.notoriety,
-      COUNT(t.id)::text AS turfs_held
+      COUNT(t.id)::text AS turfs_held, ga.character_id
      FROM gangs ga
      LEFT JOIN turfs t ON t.owner_gang_id = ga.id
      WHERE ga.game_id = $1
@@ -110,6 +119,21 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     [gameId],
   );
 
+  let protectedGangIds: string[] = [];
+  if (game.status === 'active') {
+    const protectActionsResult = await pool.query<{ gang_id: string; round_number: number }>(
+      `SELECT gang_id, round_number
+       FROM phase_actions
+       WHERE game_id = $1 AND phase = 'phase2' AND action = 'protect'
+         AND round_number >= $2 AND round_number < $3`,
+      [gameId, Math.max(1, game.round_number - 2), game.round_number],
+    );
+    protectedGangIds = getActiveProtectedGangIds(protectActionsResult.rows.map((action) => ({
+      gangId: action.gang_id,
+      roundNumber: action.round_number,
+    })), game.round_number);
+  }
+
   const actionLogResult = await pool.query<ActionLogRow>(
     `SELECT ar.id, pa.round_number, pa.phase, ga.name AS gang_name, pa.action,
       ar.roll_result, ar.outcome, ar.resolved_at
@@ -121,7 +145,6 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     [gameId],
   );
 
-  const game = gameResult.rows[0];
   const gangs = gangsResult.rows.map((gang) => ({
     id: gang.id,
     gameId: gang.game_id,
@@ -131,6 +154,7 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     members: gang.members,
     notoriety: gang.notoriety,
     turfsHeld: Number(gang.turfs_held),
+    characterId: gang.character_id,
   }));
   const turfs = turfsResult.rows.map((turf) => ({
     id: turf.id,
@@ -152,7 +176,6 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
   return {
     game: {
       id: game.id,
-      creatorUserId: game.creator_user_id,
       maxPlayers: game.max_players,
       status: game.status,
       memberCount: Number(game.member_count),
@@ -164,7 +187,35 @@ export async function getGameboard(pool: Pool, gameId: string): Promise<Gameboar
     },
     gangs,
     turfs,
+    protectedGangIds,
     neutralTurfs: turfs.filter((turf) => turf.ownerGangId === null).length,
     actionLog,
+  };
+}
+
+export async function getPublicGameboard(pool: Pool, gameId: string): Promise<PublicGameboard | null> {
+  const board = await getGameboard(pool, gameId);
+  if (!board) return null;
+
+  const actionCountResult = await pool.query<{ submitted_count: string }>(
+    `SELECT COUNT(*)::text AS submitted_count
+     FROM phase_actions
+     WHERE game_id = $1 AND round_number = $2 AND phase = $3`,
+    [gameId, board.game.roundNumber, board.game.currentPhase],
+  );
+
+  return {
+    ...board,
+    gangs: board.gangs.map((gang) => ({
+      id: gang.id,
+      name: gang.name,
+      money: gang.money,
+      members: gang.members,
+      notoriety: gang.notoriety,
+      turfsHeld: gang.turfsHeld,
+      characterId: gang.characterId,
+    })),
+    submittedCount: Number(actionCountResult.rows[0].submitted_count),
+    totalGangCount: board.game.gangCount,
   };
 }
